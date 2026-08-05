@@ -28,10 +28,6 @@ async function init() {
     envMap1.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = envMap1;
 
-    const bg = await imgLoader.loadAsync('./assets/lineMap_dark.png');
-    bg.mapping = THREE.EquirectangularReflectionMapping;
-    //scene.background = bg; //scene.environment = bg;
-
     camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     camera.position.z = cameraDistance;
 
@@ -73,7 +69,6 @@ function draw() {
 
     //############################################## // HEART
     objLoader.load('./assets/small_heart.json', (heart) => {
-        console.log(heart);
         heart.scale.set(0.075, 0.075, 0.075);
         heart.position.y = -0.5;
 
