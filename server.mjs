@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'https://unpkg.com/express@4.18.2/index.js';
 
 const hostname = '127.0.0.1';
 const port = 8080;
