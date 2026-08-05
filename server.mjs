@@ -1,4 +1,3 @@
-/*
 import express from 'express';
 
 const hostname = '127.0.0.1';
@@ -13,4 +12,3 @@ app.listen(port, function (err) {
         console.log(`Listening at http://${hostname}:${port}`);
     }
 });
-*/
