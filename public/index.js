@@ -30,7 +30,7 @@ async function init() {
 
     const bg = await imgLoader.loadAsync('./assets/lineMap_dark.png');
     bg.mapping = THREE.EquirectangularReflectionMapping;
-    scene.background = bg; //scene.environment = bg;
+    //scene.background = bg; //scene.environment = bg;
 
     camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     camera.position.z = cameraDistance;
