@@ -12,7 +12,7 @@ const width = window.innerWidth;
 const height = window.innerHeight;
 const aspectRatio = width / height;
 
-//################################################## // SHADER
+//################################################## // LOADER
 const fileLoader = new THREE.FileLoader();
 const imgLoader = new THREE.TextureLoader();
 const objLoader = new THREE.ObjectLoader();
@@ -22,6 +22,20 @@ const hdrLoader = new HDRLoader(); const exrLoader = new EXRLoader();
 init();
 async function init() {
 
+
+    //############################################## // STREAM
+
+    //const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true, })
+
+    //const audioTrack = stream.getAudioTracks()[0];
+    //const audioContext = new THREE.AudioContext();
+
+    //const listener = new THREE.AudioListener();
+    //const audio = new THREE.Audio(listener);
+
+    //audio.setMediaStreamSource(stream);
+
+    //############################################## // LIGHTS, CAMERA, ACTION!
     scene = new THREE.Scene();
 
     const envMap1 = await exrLoader.loadAsync('./assets/envMap2.exr');
@@ -69,7 +83,7 @@ function draw() {
 
     //############################################## // HEART
     objLoader.load('./assets/small_heart.json', (heart) => {
-        heart.scale.set(0.075, 0.075, 0.075);
+        heart.scale.set(0.082, 0.082, 0.082);
         heart.position.y = -0.5;
 
         let material = new THREE.MeshBasicMaterial({
@@ -124,38 +138,23 @@ function draw() {
     let knot = new THREE.Mesh(knot_geo, knot_mat);
     scene.add(knot);
 
-    //############################################## // MOON
-    imgLoader.load('./assets/moon_color1.jpg', (color) => {
-        const moon_texture = color;
-        imgLoader.load('./assets/moon_map1.png', (map) => {
-            const moon_map = map;
-            fileLoader.load('./vertexShader.glsl', (data) => {
-                const vertexShader = data;
-                fileLoader.load('./fragmentShader.glsl', (data => {
-                    const fragmentShader = data;
-                    const shaderMaterial = new THREE.ShaderMaterial({
-                        uniforms: {
-                            u_Time: { type: 'f', value: 1.0 },
-                            u_Resolution: { value: new THREE.Vector2(width, height) },
+    //############################################## // Shader
+    fileLoader.load('./vertexShader.glsl', (data) => {
+        const vertexShader = data;
+        fileLoader.load('./fragmentShader.glsl', (data => {
+            const fragmentShader = data;
+            const shaderMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    u_Time: { type: 'f', value: 1.0 },
+                    u_Resolution: { value: new THREE.Vector2(width, height) },
+                },
+                defines: { USE_UV: true, USE_MAP: true, },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
 
-                            u_Texture: { type: 't', value: moon_texture },
-                            u_Map: { type: 't', value: moon_map },
-                        },
-                        defines: { USE_UV: true, USE_MAP: true, },
-                        vertexShader: vertexShader,
-                        fragmentShader: fragmentShader,
-
-                        //wireframe: true,
-                    });
-
-                    let moon_geo = new THREE.SphereGeometry(13, 42, 42);
-                    let moon_mat = shaderMaterial;
-                    let moon = new THREE.Mesh(moon_geo, moon_mat);
-                    scene.add(moon);
-
-                }));
+                //wireframe: true,
             });
-        });
+        }));
     });
 
     const speed = 0.00025;
@@ -164,8 +163,8 @@ function draw() {
 
         const t = (Math.sin(Date.now() * speed) + 1) / 2;
         let max1 = 3; let max2 = (max1 * 2) -  1;
-        knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, lerp(1, max1, t), lerp(2, max2, t));
-        //knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, lerp(2, 6, t));
+        //knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, lerp(1, max1, t), lerp(2, max2, t));
+        knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, lerp(2, 6, t));
         knot.geometry = knot_geo;
 
         const t2 = (Math.sin(Date.now() * speed) + 1) / 2;
