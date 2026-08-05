@@ -1,4 +1,4 @@
-import express from './node_modules/express/lib/';
+import express from 'node:express';
 
 const hostname = '127.0.0.1';
 const port = 8080;
