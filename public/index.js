@@ -6,7 +6,7 @@ import { AsciiEffect } from 'asciiEffect'; import { StereoEffect } from 'stereoE
 //################################################## // VARIABLES
 
 let scene, camera, light, pointLight, renderer, controls, mixer, clock;
-let cameraDistance = 7; let fieldOfView = 67; let nearPlane = 0.1; let farPlane = 1500;
+let cameraDistance = 13; let fieldOfView = 67; let nearPlane = 0.1; let farPlane = 1500;
 
 const width = window.innerWidth;
 const height = window.innerHeight;
@@ -28,6 +28,9 @@ async function init() {
     envMap1.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = envMap1;
 
+    const bg = await imgLoader.loadAsync('./assets/lineMap_dark.png');
+    bg.mapping = THREE.EquirectangularReflectionMapping;
+    scene.background = bg; //scene.environment = bg;
 
     camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     camera.position.z = cameraDistance;
@@ -68,6 +71,7 @@ function lerp(start, end, t) { return start * (1 - t) + end * t; }
 //################################################## // SCENE
 function draw() {
 
+    //############################################## // HEART
     objLoader.load('./assets/small_heart.json', (heart) => {
         console.log(heart);
         heart.scale.set(0.075, 0.075, 0.075);
@@ -82,18 +86,48 @@ function draw() {
         scene.add(heart);
 
         const centerY = heart.position.y;
-        step();
+
         function step() {
             requestAnimationFrame(step);
 
-            const speed = 0.0025;
+            const speed = 0.001;
             const t = (Math.sin(Date.now() * speed) + 1) / 2;
 
-            heart.rotation.y += speed * 7;
+            heart.rotation.y += speed * 5;
             heart.position.y = lerp(centerY + ((t + 1) * 0.15), centerY - ((t + 1) * 0.15), t);
             pointLight.position.y = heart.position.y;
-        }
+        } step();
     });
+
+    //############################################## // KNOT
+    let knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, 5);
+    let knot_mat = new THREE.MeshPhysicalMaterial({
+        envMap: scene.environment,
+
+        color: 0x000000, emissive: 0xffffff, emissiveIntensity: 0.001,
+        transparent: true, opacity: 0.82,
+
+        roughness: 0.42,
+        metalness: 1,
+
+        iridescence: 1,
+        iridescenceIOR: 1,
+
+        clearcoat: 0.75,
+        clearcoatRoughness: 0.25,
+
+        flatShading: true,
+
+        sheen: 1,
+        sheenColor: 0x000000,
+        sheenRoughness: 0.5,
+
+        specularIntensity: 1,
+        specularColor: 0x00ffff,
+
+    });
+    let knot = new THREE.Mesh(knot_geo, knot_mat);
+    scene.add(knot);
 
     //############################################## // MOON
     imgLoader.load('./assets/moon_color1.jpg', (color) => {
@@ -119,61 +153,29 @@ function draw() {
                         //wireframe: true,
                     });
 
-
-
-
-                    //let moon_geo = new THREE.SphereGeometry(1.75, 42, 42);
-                    let knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, 5);
-                    let knot_mat = new THREE.MeshPhysicalMaterial({
-                        envMap: scene.environment,
-
-                        color: 0x000000, emissive: 0xffffff, emissiveIntensity: 0.001,
-                        transparent: true, opacity: 0.82,
-
-                        roughness: 0.42,
-                        metalness: 1,
-
-                        iridescence: 1,
-                        iridescenceIOR: 1,
-
-                        clearcoat: 0.75,
-                        clearcoatRoughness: 0.25,
-
-                        flatShading: true,
-
-                        sheen: 1,
-                        sheenColor: 0x000000,
-                        sheenRoughness: 0.5,
-
-                        specularIntensity: 1,
-                        specularColor: 0x00ffff,
-
-                    });
-                    let knot = new THREE.Mesh(knot_geo, knot_mat);
-                    scene.add(knot);
-
-                    const speed = 0.00025;
-                    step();
-                    function step() {
-                        requestAnimationFrame(step);
-
-                        const t = (Math.sin(Date.now() * speed) + 1) / 2;
-                        let max1 = 3; let max2 = (max1 * 2) -  1;
-                        //knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, lerp(1, max1, t), lerp(2, max2, t));
-                        knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, lerp(2, 6, t));
-                        knot.geometry = knot_geo;
-
-                        const t2 = (Math.sin(Date.now() * speed) + 1) / 2;
-                        knot_mat.iridescenceIOR = lerp(1, 2.3, t2);
-                        knot_mat.opacity = lerp(0.37, 0.82, t2);
-                        knot.material = knot_mat;
-
-                        renderer.render(scene, camera);
-                    }
-
+                    let moon_geo = new THREE.SphereGeometry(13, 42, 42);
+                    let moon_mat = shaderMaterial;
+                    let moon = new THREE.Mesh(moon_geo, moon_mat);
+                    scene.add(moon);
 
                 }));
             });
         });
     });
+
+    const speed = 0.00025;
+    function step() {
+        requestAnimationFrame(step);
+
+        const t = (Math.sin(Date.now() * speed) + 1) / 2;
+        let max1 = 3; let max2 = (max1 * 2) -  1;
+        knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, lerp(1, max1, t), lerp(2, max2, t));
+        //knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, lerp(2, 6, t));
+        knot.geometry = knot_geo;
+
+        const t2 = (Math.sin(Date.now() * speed) + 1) / 2;
+        knot_mat.iridescenceIOR = lerp(1, 2.3, t2);
+        knot_mat.opacity = lerp(0.37, 0.82, t2);
+        knot.material = knot_mat;
+    } step();
 }
