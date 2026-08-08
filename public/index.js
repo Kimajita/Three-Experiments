@@ -109,7 +109,8 @@ function draw() {
     });
 
     //############################################## // KNOT
-    let knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, 5);
+    let knot_radius = 3.5; let tube_radius = 0.5; let tube_x = 200; let tube_y = 5; let tube_p = 1; let tube_q = 5;
+    let knot_geo = new THREE.TorusKnotGeometry(knot_radius, tube_radius, tube_x, tube_y, tube_p, tube_q); //radius, thickness, segments, segments, p, q
     let knot_mat = new THREE.MeshPhysicalMaterial({
         envMap: scene.environment,
 
@@ -122,17 +123,7 @@ function draw() {
         iridescence: 1,
         iridescenceIOR: 1,
 
-        clearcoat: 0.75,
-        clearcoatRoughness: 0.25,
-
         flatShading: true,
-
-        sheen: 1,
-        sheenColor: 0x000000,
-        sheenRoughness: 0.5,
-
-        specularIntensity: 1,
-        specularColor: 0x00ffff,
 
     });
     let knot = new THREE.Mesh(knot_geo, knot_mat);
@@ -160,11 +151,16 @@ function draw() {
     const speed = 0.00025;
     function step() {
         requestAnimationFrame(step);
+        const t1 = (Math.sin(Date.now() * speed) + 1) / 2;
 
-        const t = (Math.sin(Date.now() * speed) + 1) / 2;
+        //worm
         let max1 = 3; let max2 = (max1 * 2) -  1;
-        //knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, lerp(1, max1, t), lerp(2, max2, t));
-        knot_geo = new THREE.TorusKnotGeometry(3.5, 0.5, 100, 15, 1, lerp(2, 6, t));
+        tube_p = lerp(1, max1, t1); tube_q = lerp(2, max2, t1);
+
+        //flower
+        //tube_p = 1; tube_q = lerp(2, 6, t1);
+
+        knot_geo = new THREE.TorusKnotGeometry(knot_radius, tube_radius, tube_x, tube_y, tube_p, tube_q);
         knot.geometry = knot_geo;
 
         const t2 = (Math.sin(Date.now() * speed) + 1) / 2;
