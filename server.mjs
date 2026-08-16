@@ -5,7 +5,7 @@ const host = '127.0.0.1';
 const port = 8080;
 const app = express();
 
-app.use(express.static('./public'));
+app.use(express.static('./docs'));
 
 app.listen(port, function (err) {
     if (err) {
