@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>test</title>
+    </head>
+    <body>
+        <h1>HELLO</h1>
+        <button>generate art</button>
+
+        <script>
+
+            const heading = document.querySelector('h1');
+            const button = document.querySelector('button');
+
+            button.addEventListener('click', () => {
+                fetch('http://localhost:8080/message')
+                    .then(respnse => {
+                        if(!response.ok){
+                            throw new Error(`Server error: ${response.status} ${response.statusText}`)
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        heading.textContent = data.message;
+                    })
+                    .catch(error => {
+                        console.error(error);
+                    });
+            });
+
+        </script>
+    </body>
+</html>
