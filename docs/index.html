@@ -2,30 +2,57 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <title>THREE</title>
+        <title>ThreeJS Experiments</title>
 
         <style>
             * {
+                appearance: none;
                 margin: 0;
                 padding: 0;
+
+                font-family: monospace;
             }
+            body {
+                background: black;
+                color: white;
+                text-align: center;
+
+                width: 100vw; height: 100vh;
+
+                display: grid;
+                grid-template-rows: 2fr 7fr 1fr;
+            }
+            header { align-content: center; }
+            main { }
+            footer { align-content: center; }
+
+            #title {
+                font-size: 3em;
+            }
+
+            ul { }
+            li { }
+            a {
+                color: mediumpurple;
+                font-size: 2em;
+                line-height: 1.5em;
+            }
+
         </style>
-
-        <script type="importmap">
-            {
-                "imports": {
-                    "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
-                    "orbitControls": "https://unpkg.com/three@latest/examples/jsm/controls/OrbitControls.js",
-                    "exrLoader": "https://unpkg.com/three@latest/examples/jsm/loaders/EXRLoader.js",
-                    "hdrLoader": "https://unpkg.com/three@latest/examples/jsm/loaders/HDRLoader.js",
-                    "asciiEffect": "https://unpkg.com/three@latest/examples/jsm/effects/AsciiEffect.js",
-                    "stereoEffect": "https://unpkg.com/three@latest/examples/jsm/effects/StereoEffect.js"
-                }
-            }
-        </script>
-
-        <script type="module" src="./index.js" async></script>
     </head>
     <body>
+        <header>
+            <h1 id="title">Experiments with Three.js</h1>
+            <h3>(note: everything here is a work in progress)</h3>
+        </header>
+        <main>
+            <ul>
+                <li><a href="./heart.html" target="_blank">heart geometry</a></li>
+                <li><a href="./testing.html" target="_blank">work in progress</a></li>
+            </ul>
+        </main>
+        <footer>
+            <div>Juri Wende</div>
+        </footer>
     </body>
 </html>
