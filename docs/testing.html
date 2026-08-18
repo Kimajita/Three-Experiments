@@ -14,18 +14,16 @@
         <script type="importmap">
             {
                 "imports": {
-                    "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
-                    "orbitControls": "https://unpkg.com/three@latest/examples/jsm/controls/OrbitControls.js",
-                    "exrLoader": "https://unpkg.com/three@latest/examples/jsm/loaders/EXRLoader.js",
-                    "hdrLoader": "https://unpkg.com/three@latest/examples/jsm/loaders/HDRLoader.js",
-                    "asciiEffect": "https://unpkg.com/three@latest/examples/jsm/effects/AsciiEffect.js",
-                    "stereoEffect": "https://unpkg.com/three@latest/examples/jsm/effects/StereoEffect.js"
+                    "three": "https://unpkg.com/three@0.185.1/build/three.webgpu.js",
+                    "three/webgpu": "https://unpkg.com/three@0.185.1/build/three.webgpu.js",
+                    "three/tsl": "https://unpkg.com/three@0.185.1/build/three.tsl.js",
+                    "orbitControls": "https://unpkg.com/three@latest/examples/jsm/controls/OrbitControls.js"
                 }
             }
         </script>
     </head>
     <body>
-        <script type="module" src="./index.js">
+        <script type="module" src="./index.js" async>
 
         </script>
     </body>
