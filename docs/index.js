@@ -65,7 +65,7 @@ function draw() {
 
     //______________________________________________ // Material
     const knot_mat = new THREE.MeshPhysicalNodeMaterial({
-        metalness: 0.0,
+        metalness: 5.0,
         roughness: 0.0,
         transmission: 0.5,
         thickness: 1.0,
