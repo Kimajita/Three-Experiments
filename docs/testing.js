@@ -4,11 +4,31 @@ import * as THREE from 'three';
 //################################################## // VARIABLES
 
 let scene, camera, light, pointLight, renderer; //controls;
-let cameraDistance = 1; let fieldOfView = 67; let nearPlane = 0.1; let farPlane = 1500;
+let cameraDistance = 0.82; let fieldOfView = 67; let nearPlane = 0.1; let farPlane = 1500;
 
 const width = window.innerWidth;
 const height = window.innerHeight;
 const aspectRatio = width / height;
+
+//############################################## // STREAM
+
+let analyse;
+async function startStream() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true, });
+
+        const listen = new THREE.AudioListener();
+        camera.add(listen);
+        listen.setMasterVolume(0);
+
+        const audio = new THREE.Audio(listen);
+        audio.setMediaStreamSource(stream);
+
+        analyse = new THREE.AudioAnalyser(audio, 2048);
+
+    } catch(err) { console.error('streaming error :(', err)}
+}
+
 
 //################################################## // INIT
 init();
@@ -36,6 +56,7 @@ async function init() {
     //controls = new OrbitControls(camera, renderer.domElement);
     //controls.enableDamping = true;
 
+    await startStream();
     draw();
     render();
 }
@@ -66,12 +87,15 @@ function draw() {
                     uColor: { value: col },
                     uResolution: { value: new THREE.Vector2(width, height) },
                     uAspect: { value: width / height },
-                    uMouse: { value: new THREE.Vector2 }
+                    uMouse: { value: new THREE.Vector2 },
+                    uFrequency: { value: 0.0 },
+                    uNormalFrequency: { value: 0.0 }
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
             });
 
+            const basic_mat = new THREE.MeshBasicMaterial();
             const mesh = new THREE.Mesh(geo, mat);
             scene.add(mesh);
 
@@ -92,13 +116,25 @@ function draw() {
                 mat.uniforms.uMouse.value.x = mouse.pageX / width;
                 mat.uniforms.uMouse.value.y = mouse.pageY / height;
             }
+
+            let averageFrequency, normalFrequency;
+            let max = 0.0; let current = 1.0;
+            function stream() {
+                requestAnimationFrame(stream);
+                averageFrequency = analyse.getAverageFrequency();
+                mat.uniforms.uFrequency.value = averageFrequency;
+
+                current = averageFrequency;
+                if (current > max) { max = current; console.log(max); }
+
+                normalFrequency = averageFrequency / max;
+                mat.uniforms.uNormalFrequency.value = normalFrequency;
+            } stream();
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+            } //animate();
         });
     });
-
-    function step() {
-        requestAnimationFrame(step);
-
-
-
-    } //step();
 }
