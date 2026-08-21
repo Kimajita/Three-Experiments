@@ -1,23 +1,20 @@
-varying vec3 v_Normal;
-varying vec2 v_Uv;
 
-varying vec3 L;
-varying vec3 V;
+uniform float uTime;
+uniform float uSine;
+uniform vec3 uColor;
+uniform vec2 uResolution;
+uniform float uAspect;
+uniform vec2 uMouse;
 
-attribute vec3 tangent;
-attribute vec3 bitangent;
+varying vec3 vPosition;
+varying vec3 vNormal;
+varying vec2 vUV;
 
 void main() {
-    v_Normal = normal;
-    v_Uv = uv;
 
-    vec3 surfaceNormal = normalize((modelViewMatrix * vec4(normal, 0.0)).xyz);
-    vec3 tang = normalize((modelViewMatrix * vec4(tangent, 0.0)).xyz);
-    vec3 bitang = normalize(cross(surfaceNormal, tang));
-    mat3 toTangentSpace = mat3(tang, bitang, surfaceNormal);
-
-    //L = toTangentSpace * (lightPosition - (modelViewMatrix * vec4(position, 1.0)).xyz);
-    //V = toTangentSpace * (- (modelViewMatrix * vec4(position, 1.0)).xyz);
+    vPosition = position;
+    vNormal = normal;
+    vUV = uv;
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
