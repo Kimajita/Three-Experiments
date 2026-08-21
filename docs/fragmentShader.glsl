@@ -1,10 +1,7 @@
 //graphtoy.com
-uniform float uTime;
-uniform float uSine;
-uniform vec3 uColor;
-uniform vec2 uResolution;
-uniform float uAspect;
-uniform vec2 uMouse;
+uniform float uTime; uniform float uSine;
+uniform vec3 uColor; uniform vec2 uResolution; uniform float uAspect;
+uniform vec2 uMouse; uniform float uFrequency; uniform float uNormalFrequency;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
@@ -22,9 +19,11 @@ vec3 gradient(float t) {
 }
 
 void main() {
-    vec2 uv = vUV * 2.0 - 1.0;
-    vec2 uv0 = uv;
+    vec2 uv = vUV * 2.0 - 1.0; vec2 uv0 = uv;
     vec3 finalColor = vec3(0.0, 0.0, 0.0);
+
+    uv += uTime * 0.01;
+    uv += uMouse;
 
     for (float i = 0.0; i < 3.0; i++) {
         uv = fract(uv * 1.5); //split
@@ -45,6 +44,10 @@ void main() {
         d = pow(inverse / d, 1.25); //inverted glow rings
 
         finalColor += color * d; //multiply color with circles
+        finalColor.x = finalColor.x * uNormalFrequency * 0.75;
+        finalColor.y = finalColor.y * uNormalFrequency * 0.5;
+
+        //fishEye
     }
 
     gl_FragColor = vec4(finalColor, 1.0);

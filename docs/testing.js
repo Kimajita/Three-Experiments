@@ -125,7 +125,7 @@ function draw() {
                 mat.uniforms.uFrequency.value = averageFrequency;
 
                 current = averageFrequency;
-                if (current > max) { max = current; console.log(max); }
+                if (current > max) { max = current; console.log('max frequency: ' + max); }
 
                 normalFrequency = averageFrequency / max;
                 mat.uniforms.uNormalFrequency.value = normalFrequency;
