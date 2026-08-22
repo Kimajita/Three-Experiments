@@ -42,10 +42,12 @@ async function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(width, height);
+    document.body.appendChild(renderer.domElement);
 
     //############################################## // RENDER PASS
     compose = new EffectComposer(renderer); pass = new RenderPass(scene, camera);
-    compose.addPass(pass); //postPro();
+    pass.needsSwap = false; compose.addPass(pass);
+    await postPro();
 
     //controls = new OrbitControls(camera, renderer.domElement);
     //controls.enableDamping = true;
@@ -54,9 +56,6 @@ async function init() {
     draw();
     //postPro();
     render();
-
-    document.body.appendChild(renderer.domElement);
-    canvas = document.querySelector('canvas');
 }
 
 //############################################## // STREAM
@@ -87,7 +86,6 @@ function draw() {
         loader.load('./fragmentShader.glsl', (file) => {
             const fragmentShader = file;
 
-            const col = new THREE.Vector3(1, 1, 1);
             const geo = new THREE.PlaneGeometry(1, 1);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
@@ -99,7 +97,7 @@ function draw() {
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
-            });
+            }, );
 
             const basic_mat = new THREE.MeshBasicMaterial();
             const mesh = new THREE.Mesh(geo, mat);
@@ -140,23 +138,24 @@ function draw() {
     });
 }
 
-function postPro() {
+async function postPro() {
     const loader = new THREE.FileLoader();
-    loader.load('./vertexShader.glsl', (file) => {
+    loader.load('./postVertex.glsl', (file) => {
         const vertexShader = file;
-        loader.load('./fishEyefragment.glsl', (file) => {
+        loader.load('./postFragment.glsl', (file) => {
             const fragmentShader = file;
             shader = new ShaderPass(new THREE.ShaderMaterial({
                 uniforms: {
                     uTime: { value: 0.0 }, uSine: { value: 0.0 },
-                    uResolution: { value: new THREE.Vector2(width, height) },
-                    uAspect: { value: width / height },
-                    uMouse: { value: new THREE.Vector2() },
-                    uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                    uResolution: { value: new THREE.Vector2(width, height) }, uAspect: { value: width / height },
+                    uMouse: { value: new THREE.Vector2() }, uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                    uTexture: { value: renderer.render(scene, camera) }
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader
-            })); compose.addPass(shader);
+            }));
+
+            compose.addPass(shader);
         });
     });
 }

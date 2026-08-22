@@ -1,7 +1,8 @@
 //graphtoy.com
+uniform vec2 uMouse;
 uniform float uTime; uniform float uSine;
 uniform vec2 uResolution; uniform float uAspect;
-uniform vec2 uMouse; uniform float uFrequency; uniform float uNormalFrequency;
+uniform float uFrequency; uniform float uNormalFrequency;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
