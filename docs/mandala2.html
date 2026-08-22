@@ -202,15 +202,19 @@
                 varying vec2 vUV;
 
                 const float pi = 3.1415926535;
+                float cubicHermite(float n) { return n * n * (3.0 - 2.0 * n); }
 
                 vec2 fisheye(vec2 uv, vec2 xy, float maxFactor) {
                     float d = length(xy);
-                    float distortionSize = 2.5; //default: 2.0, OUTER CIRCLE RADIUS!
+                    float distortionSize = 2.42; //default: 2.0, OUTER CIRCLE RADIUS!
                     if (d < (distortionSize - maxFactor)) {
                         d = length(xy * maxFactor);
-                        float z = sqrt(0.5 - d * d); //default: sqrt(1.0 - d * d); INNER CIRCLE RADIUS!
+
+                        float z = sqrt(abs(sin(uNormalFrequency * 0.025 + 0.5)) - d * d); //default: sqrt(1.0 - d * d); INNER CIRCLE RADIUS!
+                        z *= abs(sin(uMouse.y * 1.5));
                         float r = atan(d, z) / pi;
-                        float phi = atan(xy.y, xy.x);
+                        float phi = atan(xy.y, xy.x); //CIRCLE!
+                        phi *= abs(sin(uMouse.x));
 
                         uv.x = r * cos(phi) + 0.5; uv.y = r * sin(phi) + 0.5;
 
@@ -250,14 +254,16 @@
                     vec4 texture = texture2D(uTexture, finalCoord);
                     vec3 finalColor = texture.xyz;
 
-                    vec3 col1 = vec3(1.0, 0.0, 1.0);
-                    vec3 col2 = vec3(0.0, 1.0, 0.0);
+                    vec3 col1 = vec3(0.75, 0.5, 0.15);
+                    vec3 col2 = vec3(0.75, 1.35, 1.25);
 
-                    vec3 col = mix(col1, col2, uMouse.x);
-                    //finalColor = blend(finalColor, col);
+                    float pct = abs(sin(uNormalFrequency * 0.75)); //intenity
+                    vec3 col = mix(col1, col2, pct);
+                    finalColor = blend(finalColor, col);
 
-                    float pct = abs(sin(uTime));
-                    //finalColor = mix(col1, col2, pct);
+
+
+
 
                     gl_FragColor = vec4(finalColor, 1.0);
                 } `
@@ -275,10 +281,9 @@
 
                 const t = (Math.sin(Date.now() * speed) + 1) / 2;
                 shader.uniforms.uSine.value = t;
-
             } updateTime(0.0);
 
-            document.onmousemove = function (mouse) {
+            window.onmousemove = function (mouse) {
                 shader.uniforms.uMouse.value.x = mouse.pageX / width;
                 shader.uniforms.uMouse.value.y = mouse.pageY / height;
             }
