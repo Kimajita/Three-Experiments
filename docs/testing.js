@@ -1,34 +1,25 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'effectComposer';
+import { RenderPass } from 'renderPass';
+import { ShaderPass } from 'shaderPass';
 //import { OrbitControls } from 'orbitControls';
 
 //################################################## // VARIABLES
-
-let scene, camera, light, pointLight, renderer; //controls;
+//let controls;
+let renderer, canvas, compose, pass, shader;
+let scene, camera, light, pointLight;
 let cameraDistance = 0.82; let fieldOfView = 67; let nearPlane = 0.1; let farPlane = 1500;
 
 const width = window.innerWidth;
 const height = window.innerHeight;
 const aspectRatio = width / height;
 
-//############################################## // STREAM
-
-let analyse;
-async function startStream() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true, });
-
-        const listen = new THREE.AudioListener();
-        camera.add(listen);
-        listen.setMasterVolume(0);
-
-        const audio = new THREE.Audio(listen);
-        audio.setMediaStreamSource(stream);
-
-        analyse = new THREE.AudioAnalyser(audio, 2048);
-
-    } catch(err) { console.error('streaming error :(', err)}
+//################################################## // RENDER
+function render() {
+    requestAnimationFrame(render);
+    //controls.update();
+    compose.render();
 }
-
 
 //################################################## // INIT
 init();
@@ -51,21 +42,39 @@ async function init() {
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(width, height);
-    document.body.appendChild(renderer.domElement);
+
+    //############################################## // RENDER PASS
+    compose = new EffectComposer(renderer); pass = new RenderPass(scene, camera);
+    compose.addPass(pass); //postPro();
 
     //controls = new OrbitControls(camera, renderer.domElement);
     //controls.enableDamping = true;
 
     await startStream();
     draw();
+    //postPro();
     render();
+
+    document.body.appendChild(renderer.domElement);
+    canvas = document.querySelector('canvas');
 }
 
-//################################################## // RENDER
-function render() {
-    requestAnimationFrame(render);
-    //controls.update();
-    renderer.render(scene, camera);
+//############################################## // STREAM
+let analyse;
+async function startStream() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true, });
+
+        const listen = new THREE.AudioListener();
+        camera.add(listen);
+        listen.setMasterVolume(0);
+
+        const audio = new THREE.Audio(listen);
+        audio.setMediaStreamSource(stream);
+
+        analyse = new THREE.AudioAnalyser(audio, 2048);
+
+    } catch(err) { console.error('streaming error :(', err)}
 }
 
 //################################################## // SCENE
@@ -82,14 +91,11 @@ function draw() {
             const geo = new THREE.PlaneGeometry(1, 1);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
-                    uTime: { value: 0.0 },
-                    uSine: { value: 0.0 },
-                    uColor: { value: col },
+                    uTime: { value: 0.0 }, uSine: { value: 0.0 },
                     uResolution: { value: new THREE.Vector2(width, height) },
                     uAspect: { value: width / height },
-                    uMouse: { value: new THREE.Vector2 },
-                    uFrequency: { value: 0.0 },
-                    uNormalFrequency: { value: 0.0 }
+                    uMouse: { value: new THREE.Vector2() },
+                    uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
@@ -130,11 +136,27 @@ function draw() {
                 normalFrequency = averageFrequency / max;
                 mat.uniforms.uNormalFrequency.value = normalFrequency;
             } stream();
+        });
+    });
+}
 
-            function animate() {
-                requestAnimationFrame(animate);
-
-            } //animate();
+function postPro() {
+    const loader = new THREE.FileLoader();
+    loader.load('./vertexShader.glsl', (file) => {
+        const vertexShader = file;
+        loader.load('./fishEyefragment.glsl', (file) => {
+            const fragmentShader = file;
+            shader = new ShaderPass(new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0.0 }, uSine: { value: 0.0 },
+                    uResolution: { value: new THREE.Vector2(width, height) },
+                    uAspect: { value: width / height },
+                    uMouse: { value: new THREE.Vector2() },
+                    uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                },
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader
+            })); compose.addPass(shader);
         });
     });
 }
