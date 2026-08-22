@@ -2,23 +2,34 @@ import * as THREE from 'three';
 import { EffectComposer } from 'effectComposer';
 import { RenderPass } from 'renderPass';
 import { ShaderPass } from 'shaderPass';
-//import { OrbitControls } from 'orbitControls';
 
 //################################################## // VARIABLES
 //let controls;
 let renderer, canvas, compose, pass, shader;
 let scene, camera, light, pointLight;
-let cameraDistance = 0.82; let fieldOfView = 67; let nearPlane = 0.1; let farPlane = 1500;
+let cameraDistance = 1.0; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
 
 const width = window.innerWidth;
 const height = window.innerHeight;
 const aspectRatio = width / height;
+const pixelRatio = window.devicePixelRatio;
 
 //################################################## // RENDER
+let writeBuffer;
+function renderSetup() {
+    writeBuffer = new THREE.WebGLRenderTarget(width, height);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(width, height);
+
+    canvas = new THREE.Scene();
+    canvas.background = new THREE.Color(0x111111);
+}
+
 function render() {
     requestAnimationFrame(render);
-    //controls.update();
-    compose.render();
+    renderer.setRenderTarget(null); renderer.clear();
+    renderer.render(canvas, camera);
 }
 
 //################################################## // INIT
@@ -32,29 +43,21 @@ async function init() {
     camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     camera.position.z = cameraDistance;
 
+    //defaults
+    let left, right, top, bottom; left = -1; right = 1; top = 1; bottom = -1;
+    //left = width / -2; right = width / 2; top = height / 2; bottom = height / -2;
+    //camera = new THREE.OrthographicCamera(left, right, top, bottom, nearPlane, farPlane);
+    //camera.position.z = cameraDistance;
+
     light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
     scene.add(light);
 
-    pointLight = new THREE.PointLight(0xffffff, 1, 0, 0);
-    pointLight.position.z = cameraDistance;
-    //scene.add(pointLight)
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(width, height);
+    renderSetup();
     document.body.appendChild(renderer.domElement);
-
-    //############################################## // RENDER PASS
-    compose = new EffectComposer(renderer); pass = new RenderPass(scene, camera);
-    pass.needsSwap = false; compose.addPass(pass);
-    await postPro();
-
-    //controls = new OrbitControls(camera, renderer.domElement);
-    //controls.enableDamping = true;
 
     await startStream();
     draw();
-    //postPro();
+    postPro();
     render();
 }
 
@@ -63,16 +66,9 @@ let analyse;
 async function startStream() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true, });
-
-        const listen = new THREE.AudioListener();
-        camera.add(listen);
-        listen.setMasterVolume(0);
-
-        const audio = new THREE.Audio(listen);
-        audio.setMediaStreamSource(stream);
-
+        const listen = new THREE.AudioListener(); listen.setMasterVolume(0); camera.add(listen);
+        const audio = new THREE.Audio(listen); audio.setMediaStreamSource(stream);
         analyse = new THREE.AudioAnalyser(audio, 2048);
-
     } catch(err) { console.error('streaming error :(', err)}
 }
 
@@ -86,7 +82,11 @@ function draw() {
         loader.load('./fragmentShader.glsl', (file) => {
             const fragmentShader = file;
 
-            const geo = new THREE.PlaneGeometry(1, 1);
+            //plane as big as window / canvas
+            const planeHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fieldOfView) / 2) * nearPlane;
+            const planeWidth = planeHeight * aspectRatio;
+
+            const geo = new THREE.PlaneGeometry(planeWidth, planeHeight);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
                     uTime: { value: 0.0 }, uSine: { value: 0.0 },
@@ -97,10 +97,11 @@ function draw() {
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
+                side: THREE.DoubleSide
             }, );
 
-            const basic_mat = new THREE.MeshBasicMaterial();
             const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.z = cameraDistance - nearPlane;
             scene.add(mesh);
 
             const timer = new THREE.Timer();
@@ -129,10 +130,13 @@ function draw() {
                 mat.uniforms.uFrequency.value = averageFrequency;
 
                 current = averageFrequency;
-                if (current > max) { max = current; console.log('max frequency: ' + max); }
+                if (current > max) { max = current; console.log('abs max:\t' + max); }
 
                 normalFrequency = averageFrequency / max;
                 mat.uniforms.uNormalFrequency.value = normalFrequency;
+
+                renderer.setRenderTarget(writeBuffer); renderer.clear();
+                renderer.render(scene, camera);
             } stream();
         });
     });
@@ -144,18 +148,22 @@ async function postPro() {
         const vertexShader = file;
         loader.load('./postFragment.glsl', (file) => {
             const fragmentShader = file;
-            shader = new ShaderPass(new THREE.ShaderMaterial({
+
+            const geo = new THREE.PlaneGeometry(1.5, 1.5);
+            shader = new THREE.ShaderMaterial({
                 uniforms: {
                     uTime: { value: 0.0 }, uSine: { value: 0.0 },
                     uResolution: { value: new THREE.Vector2(width, height) }, uAspect: { value: width / height },
                     uMouse: { value: new THREE.Vector2() }, uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
-                    uTexture: { value: renderer.render(scene, camera) }
+                    uTexture: { value: writeBuffer.texture }
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader
-            }));
+            });
+            const mesh = new THREE.Mesh(geo, shader);
+            canvas.add(mesh);
 
-            compose.addPass(shader);
+            console.log(shader.uniforms.uTexture.value);
         });
     });
 }

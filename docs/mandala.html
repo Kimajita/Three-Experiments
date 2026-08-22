@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>GLSL Mandala V1</title>
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
+                    "orbitControls": "https://unpkg.com/three@0.185.1/examples/jsm/controls/OrbitControls.js",
+                    "effectComposer": "https://unpkg.com/three@0.185.1/examples/jsm/postprocessing/EffectComposer.js",
+                    "renderPass": "https://unpkg.com/three@0.185.1/examples/jsm/postprocessing/RenderPass.js",
+                    "shaderPass": "https://unpkg.com/three@0.185.1/examples/jsm/postprocessing/ShaderPass.js"
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <script type="module" async>
+
+        import * as THREE from 'three';
+        import { EffectComposer } from 'effectComposer';
+        import { RenderPass } from 'renderPass';
+        import { ShaderPass } from 'shaderPass';
+
+        //################################################## // VARIABLES
+        //let controls;
+        let renderer, canvas, compose, pass, shader;
+        let scene, camera, light, pointLight;
+        let cameraDistance = 1.0; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const aspectRatio = width / height;
+        const pixelRatio = window.devicePixelRatio;
+
+        //################################################## // RENDER
+        let writeBuffer;
+        function renderSetup() {
+            writeBuffer = new THREE.WebGLRenderTarget(width, height);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(pixelRatio);
+            renderer.setSize(width, height);
+
+            canvas = new THREE.Scene();
+            canvas.background = new THREE.Color(0x111111);
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            renderer.setRenderTarget(null); renderer.clear();
+            renderer.render(canvas, camera);
+        }
+
+        //################################################## // INIT
+        init();
+        async function init() {
+
+            //############################################## // LIGHTS, CAMERA, ACTION!
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
+            camera.position.z = cameraDistance;
+
+            light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+            scene.add(light);
+
+            renderSetup();
+            document.body.appendChild(renderer.domElement);
+
+            await startStream();
+            draw();
+            postPro();
+            render();
+        }
+
+        //############################################## // STREAM
+        let analyse;
+        async function startStream() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true, });
+                const listen = new THREE.AudioListener(); listen.setMasterVolume(0); camera.add(listen);
+                const audio = new THREE.Audio(listen); audio.setMediaStreamSource(stream);
+                analyse = new THREE.AudioAnalyser(audio, 2048);
+            } catch(err) { console.error('streaming error :(', err)}
+        }
+
+        //################################################## // SCENE
+        function draw() {
+            const speed = 0.001;
+
+            const loader = new THREE.FileLoader();
+            loader.load('./vertexShader.glsl', (file) => {
+                const vertexShader = file;
+                loader.load('./fragmentShader.glsl', (file) => {
+                    const fragmentShader = file;
+
+                    //plane as big as window / canvas
+                    const planeHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fieldOfView) / 2) * nearPlane;
+                    const planeWidth = planeHeight * aspectRatio;
+
+                    const geo = new THREE.PlaneGeometry(planeWidth, planeHeight);
+                    const mat = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0.0 }, uSine: { value: 0.0 },
+                            uResolution: { value: new THREE.Vector2(width, height) },
+                            uAspect: { value: width / height },
+                            uMouse: { value: new THREE.Vector2() },
+                            uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                        },
+                        vertexShader: vertexShader,
+                        fragmentShader: fragmentShader,
+                        side: THREE.DoubleSide
+                    }, );
+
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.z = cameraDistance - nearPlane;
+                    scene.add(mesh);
+
+                    const timer = new THREE.Timer();
+                    function updateTime(timeStamp) {
+                        requestAnimationFrame(updateTime);
+
+                        timer.update(timeStamp);
+                        const elapsed = timer.getElapsed();
+                        mat.uniforms.uTime.value = elapsed;
+
+                        const t = (Math.sin(Date.now() * speed) + 1) / 2;
+                        mat.uniforms.uSine.value = t;
+
+                    } updateTime(0.0);
+
+                    document.onmousemove = function (mouse) {
+                        mat.uniforms.uMouse.value.x = mouse.pageX / width;
+                        mat.uniforms.uMouse.value.y = mouse.pageY / height;
+                    }
+
+                    let averageFrequency, normalFrequency;
+                    let max = 0.0; let current = 1.0;
+                    function stream() {
+                        requestAnimationFrame(stream);
+                        averageFrequency = analyse.getAverageFrequency();
+                        mat.uniforms.uFrequency.value = averageFrequency;
+
+                        current = averageFrequency;
+                        if (current > max) { max = current; console.log('abs max:\t' + max); }
+
+                        normalFrequency = averageFrequency / max;
+                        mat.uniforms.uNormalFrequency.value = normalFrequency;
+
+                        renderer.setRenderTarget(writeBuffer); renderer.clear();
+                        renderer.render(scene, camera);
+                    } stream();
+                });
+            });
+        }
+
+        async function postPro() {
+            const geo = new THREE.PlaneGeometry(1.5, 1.5);
+            shader = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0.0 }, uSine: { value: 0.0 },
+                    uResolution: { value: new THREE.Vector2(width, height) }, uAspect: { value: width / height },
+                    uMouse: { value: new THREE.Vector2() }, uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                    uTexture: { value: writeBuffer.texture }
+                },
+                vertexShader: `
+
+                varying vec3 vPosition;
+                varying vec3 vNormal;
+                varying vec2 vUV;
+
+                void main() {
+                    vPosition = position;
+                    vNormal = normal;
+                    vUV = uv;
+
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+
+                `,
+                fragmentShader: `
+
+                uniform vec2 uMouse;
+                uniform float uTime; uniform float uSine;
+                uniform vec2 uResolution; uniform float uAspect;
+                uniform float uFrequency; uniform float uNormalFrequency;
+
+                uniform sampler2D uTexture;
+
+                varying vec2 vTexCoord;
+                varying vec3 vPosition;
+                varying vec3 vNormal;
+                varying vec2 vUV;
+
+                const float pi = 3.1415926535;
+
+                vec2 radiant(vec2 uv, vec2 xy, float maxFactor) {
+                    float d = length(xy);
+                    float distortionSize = 1.5; //default 2.0
+                    if (d < (distortionSize - maxFactor)) {
+                        d = length(uv + maxFactor);// + 1.0;
+
+                        float z = sqrt(1.0 - d * d); //THIS ONE! default: sqrt(1.0 - d * d);
+                        float r = atan(d, z) / pi;
+                        float phi = atan(xy.y, xy.x);
+
+                        uv.x = r * cos(phi) + 0.5; uv.y = r * sin(phi) + 0.5;
+                        return uv;
+                    } else { return 0.5 * xy + 0.5; } //as a reference for the uv reverse calculation
+                }
+
+                void main() {
+                    vec2 uv = vUV;
+                    vec2 xy = 2.0 * vUV - 1.0;
+
+                    float aperture = 175.0;
+                    float apertureHalf = 0.5 * aperture * (pi / 180.0);
+                    float maxFactor = sin(apertureHalf);
+
+                    vec2 finalCoord = radiant(uv, xy, maxFactor);
+                    //finalCoord = finalCoord * 1.05 - 0.025;
+
+                    gl_FragColor = texture2D(uTexture, finalCoord);
+                } `
+            });
+            const mesh = new THREE.Mesh(geo, shader);
+            canvas.add(mesh);
+
+            console.log(shader.uniforms.uTexture.value);
+        }
+
+        </script>
+    </body>
+</html>

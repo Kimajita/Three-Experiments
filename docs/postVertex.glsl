@@ -4,7 +4,6 @@ varying vec3 vNormal;
 varying vec2 vUV;
 
 void main() {
-
     vPosition = position;
     vNormal = normal;
     vUV = uv;
