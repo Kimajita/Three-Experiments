@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Testing</title>
+        <link rel="icon" href="#"/>
+
+        <style>
+            .hide { display: none; }
+            * {
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                width: 100vw; max-width: 100%;
+                height: 100vh;  max-height: 100%;
+
+                display: grid;
+                grid-template-columns: 1fr 3fr;
+                grid-template-rows: 1fr;
+            }
+            #menu {
+                background: mediumpurple;
+                padding: 1em;
+
+                display: grid;
+                grid-template-rows: 1fr 5fr 1fr;
+                gap: 1em;
+            }
+            #effects {
+                background: black;
+                color: white;
+            }
+            #buttons {
+            }
+            #canvas {
+                background: red;
+            }
+            label::before { content: "\a"; white-space: pre; }
+
+        </style>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://unpkg.com/three@0.185.1/build/three.module.js",
+                    "orbitControls": "https://unpkg.com/three@0.185.1/examples/jsm/controls/OrbitControls.js",
+                    "effectComposer": "https://unpkg.com/three@0.185.1/examples/jsm/postprocessing/EffectComposer.js",
+                    "renderPass": "https://unpkg.com/three@0.185.1/examples/jsm/postprocessing/RenderPass.js",
+                    "shaderPass": "https://unpkg.com/three@0.185.1/examples/jsm/postprocessing/ShaderPass.js"
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <div class="hide" id="menu">
+            here will be a menu to pick from different input images apply effects to it
+            (so far so ugly)
+
+            <div id="effects">
+                <label for="white">White</label>
+                <input type="range" id="effect_white" name="white" min="0" max="100" step="1" value="0" />
+
+                <label for="grey">Grey</label>
+                <input type="range" id="effect_grey" name="grey" min="0" max="100" step="1" value="0" />
+
+                <label for="grain">Grain</label>
+                <input type="range" id="effect_grain" name="grain" min="0" max="100" step="1" value="0" />
+            </div>
+
+            <div id="buttons">
+                <button id="btn_hideMenu">hide menu</button>
+                <button class="hide" id="btn_showMenu">show menu</button>
+            </div>
+
+        </div>
+        <div id="canvas">
+
+        </div>
+        <script type="module" async>
+
+        import * as THREE from 'three';
+        import { OrbitControls } from 'orbitControls';
+
+        //################################################## // VARIABLES
+        let controls;
+        let renderer, canvas, compose, pass, shader;
+        let scene, camera, light, pointLight;
+        let cameraDistance = 1.5; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
+        const speed = 0.001;
+
+        const width = window.innerWidth; const height = window.innerHeight; const aspectRatio = width / height; const pixelRatio = window.devicePixelRatio;
+        let canvasElem, canvasWidth, canvasHeight;
+
+        //################################################## // RENDER
+        let writeBuffer;
+        function renderSetup() {
+            writeBuffer = new THREE.WebGLRenderTarget(canvasWidth, canvasHeight);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(pixelRatio);
+            renderer.setSize(canvasWidth, canvasHeight);
+
+            canvas = new THREE.Scene();
+            canvas.background = new THREE.Color(0x111111);
+        }
+
+        function render() {
+            requestAnimationFrame(render);
+            controls.update();
+            renderer.setRenderTarget(null); renderer.clear();
+            renderer.render(scene, camera);
+        }
+
+        //################################################## // INIT
+        init();
+        async function init() {
+
+            window.addEventListener('resize', resize);
+
+            //############################################## // HTML
+            canvasElem = document.querySelector('#canvas');
+            canvasWidth = canvasElem.offsetWidth; canvasHeight = canvasElem.offsetHeight;
+
+            //############################################## // LIGHTS, CAMERA, ACTION!
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            camera = new THREE.PerspectiveCamera(fieldOfView, canvasWidth / canvasHeight, nearPlane, farPlane);
+            camera.position.z = cameraDistance;
+
+            light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
+            scene.add(light);
+
+            renderSetup();
+            canvasElem.appendChild(renderer.domElement);
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            await startStream();
+            draw();
+            postPro();
+            render();
+        }
+
+        //############################################## // STREAM
+        let analyse;
+        async function startStream() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true, });
+                const listen = new THREE.AudioListener(); listen.setMasterVolume(0); camera.add(listen);
+                const audio = new THREE.Audio(listen); audio.setMediaStreamSource(stream);
+                analyse = new THREE.AudioAnalyser(audio, 2048);
+            } catch(err) { console.error('streaming error :(', err)}
+        }
+
+        //################################################## // SCENE
+        function draw() {
+            const importImg = new THREE.TextureLoader(); const importTxt = new THREE.FileLoader();
+            importImg.load('./assets/earth/earth_squared1.jpg', (file) => {
+                const image = file;
+                importTxt.load('./fragmentShader.glsl', (file) => {
+                    const fragmentShader = file;
+
+                    const geo = new THREE.BoxGeometry(1, 1, 1);
+                    const mat = new THREE.ShaderMaterial({
+                        uniforms: {
+                            uTime: { value: 0.0 }, uSpeed: { value: speed },
+                            uColor: { value: new THREE.Color(0.5, 0.0, 0.75) },
+                            uResolution: { value: new THREE.Vector2(width, height) },
+                            uTexture: { value: image },
+
+                            //User Input:
+                            uMouse: { value: new THREE.Vector2() },
+                            uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+
+                            //Effect Slider:
+                            eWhite: { value: new THREE.Vector2() },
+                            eGrey: { value: new THREE.Vector2() },
+                            eGrain: { value: new THREE.Vector2() },
+
+                        },
+                        vertexShader: `
+                        varying vec3 vNormal;
+                        varying vec2 vUV;
+
+                        void main() {
+
+                            vNormal = normal;
+                            vUV = uv;
+
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }`,
+                        fragmentShader: `
+
+                        uniform vec3 uColor;
+                        uniform sampler2D uTexture;
+                        uniform float uTime; uniform float uSpeed;
+                        uniform vec2 uResolution; uniform vec2 uMouse;
+                        uniform float uFrequency; uniform float uNormalFrequency;
+
+                        //effects
+                        uniform vec2 eWhite; uniform vec2 eGrey; uniform vec2 eGrain;
+
+                        varying vec3 vNormal;
+                        varying vec2 vUV;
+
+                        const float pi = 3.1415926535;
+
+                        float threshold(float color, float white, float grey) {
+                            if (color > white) { return 1.0; }
+                                else if (color > grey) { return 0.5; }
+                                    else { return 0.0; }
+                        }
+
+                        float grain(vec2 uv) { return fract(sin(dot(uv, vec2(12.9898, 78.23))) * 43758.5453); }
+
+                        float dither(vec2 uv, float luma, int[4] matrix) {
+                            float amount = 2.0;
+                            int x = int(mod(uv.x, amount));
+                            int y = int(mod(uv.y, amount));
+
+                            int index = x + y * int(amount);
+                            float limit = (float(matrix[index]) + 1.0) / (1.0 + 4.0);
+
+                            return luma < limit ? 0.0 : 1.0;
+                        }
+
+                        void main() {
+                            vec2 uv = vUV * 2.0 - 1.0; vec2 uv0 = uv;
+                            //vec3 finalColor = vec3(abs(sin(uTime)), 0.0, abs(cos(uTime)));
+
+                            vec4 finalTexture = texture2D(uTexture, vUV);
+                            vec3 finalColor = finalTexture.rgb;
+
+                            //greyscale
+                            vec4 luma = vec4(0.215, 0.715, 0.075, 0.0);
+                            float greyscale = dot(finalTexture, luma);
+
+                            //threshold
+                            //float maxWhite = 0.5; float maxGrey = 0.35;
+                            float maxWhite = eWhite.y; float maxGrey = eGrey.y;
+
+                            //grain
+                            float grainFactor = eGrain.y * 2.0; //range from 0 to 2
+                            greyscale = greyscale + ((grain(uv) /9.0) * grainFactor);
+                            finalColor = vec3(threshold(greyscale, maxWhite, maxGrey));
+
+                            //dither
+                            int ditherMatrix[4] = int[](0, 3, 2, 1);
+                            finalColor = vec3(dither(vUV, finalColor.r, ditherMatrix), dither(vUV, finalColor.g, ditherMatrix), dither(vUV, finalColor.b, ditherMatrix));
+
+                            gl_FragColor = vec4(finalColor, 1.0);
+                        } `,
+                        side: THREE.DoubleSide,
+                    });
+
+                    const mesh = new THREE.Mesh(geo, mat);
+                    scene.add(mesh);
+
+                    //FUNCTIONS
+                    const timer = new THREE.Timer();
+                    function update(timeStamp) {
+                        requestAnimationFrame(update);
+
+                        timer.update(timeStamp);
+
+                        mat.uniforms.uTime.value = timer.getElapsed();
+
+                    } update(0.0);
+
+                    const eff_White = document.querySelector('#effect_white'); eff_White.addEventListener('input', slide);
+                    const eff_Grey = document.querySelector('#effect_grey'); eff_Grey.addEventListener('input', slide);
+                    const eff_Grain = document.querySelector('#effect_grain'); eff_Grain.addEventListener('input', slide);
+                    function slide(event) {
+
+                        let effect = event.target;
+                        let value = effect.valueAsNumber;
+                        let normal = effect.valueAsNumber / effect.max;
+
+                        if (effect.name == "white") {
+                            mat.uniforms.eWhite.value = new THREE.Vector2(value, normal);
+                        } else if (effect.name == "grey") {
+                            mat.uniforms.eGrey.value = new THREE.Vector2(value, normal);
+                        } else if (effect.name == "grain") {
+                            mat.uniforms.eGrain.value = new THREE.Vector2(value, normal);
+                        }
+                    }
+                });
+            });
+        }
+
+        //################################################## // EFFECTS
+        async function postPro() {
+
+        }
+
+        //################################################## // MENU
+        const btn = document.querySelector('#btn_hideMenu');
+        btn.addEventListener('click', hideMenu);
+        function hideMenu() {
+            const menu = document.querySelector('#menu'); menu.style.display = 'none';
+            const body = document.querySelector('body'); body.style.gridTemplateColumns = '1fr';
+            resize();
+        }
+
+        function showMenu() {
+            resize();
+        }
+
+        function resize() {
+            canvasWidth = canvasElem.offsetWidth; canvasHeight = canvasElem.offsetHeight;
+            camera.aspect = canvasWidth / canvasHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(canvasWidth, canvasHeight);
+        }
+
+
+        </script>
+    </body>
+</html>
