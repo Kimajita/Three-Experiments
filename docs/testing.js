@@ -8,18 +8,16 @@ let scene, camera, light, pointLight;
 let cameraDistance = 1.5; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
 const speed = 0.001;
 
-const width = window.innerWidth;
-const height = window.innerHeight;
-const aspectRatio = width / height;
-const pixelRatio = window.devicePixelRatio;
+const width = window.innerWidth; const height = window.innerHeight; const aspectRatio = width / height; const pixelRatio = window.devicePixelRatio;
+let canvasElem, canvasWidth, canvasHeight;
 
 //################################################## // RENDER
 let writeBuffer;
 function renderSetup() {
-    writeBuffer = new THREE.WebGLRenderTarget(width, height);
+    writeBuffer = new THREE.WebGLRenderTarget(canvasWidth, canvasHeight);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(width, height);
+    renderer.setSize(canvasWidth, canvasHeight);
 
     canvas = new THREE.Scene();
     canvas.background = new THREE.Color(0x111111);
@@ -36,18 +34,24 @@ function render() {
 init();
 async function init() {
 
+    window.addEventListener('resize', resize);
+
+    //############################################## // HTML
+    canvasElem = document.querySelector('#canvas');
+    canvasWidth = canvasElem.offsetWidth; canvasHeight = canvasElem.offsetHeight;
+
     //############################################## // LIGHTS, CAMERA, ACTION!
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
 
-    camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
+    camera = new THREE.PerspectiveCamera(fieldOfView, canvasWidth / canvasHeight, nearPlane, farPlane);
     camera.position.z = cameraDistance;
 
     light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
     scene.add(light);
 
     renderSetup();
-    document.body.appendChild(renderer.domElement);
+    canvasElem.appendChild(renderer.domElement);
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
@@ -87,6 +91,9 @@ function draw() {
                     //User Input:
                     uMouse: { value: new THREE.Vector2() },
                     uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+
+                    //Effect Slider:
+                    uE1: { value: new THREE.Vector2() },
                 },
                 vertexShader: `
                 varying vec3 vNormal;
@@ -106,8 +113,6 @@ function draw() {
             const mesh = new THREE.Mesh(geo, mat);
             scene.add(mesh);
 
-
-
             //FUNCTIONS
             const timer = new THREE.Timer();
             function update(timeStamp) {
@@ -118,6 +123,14 @@ function draw() {
                 mat.uniforms.uTime.value = timer.getElapsed();
 
             } update(0.0);
+
+            const effect1 = document.querySelector('#effect1');
+            let e1Value, e1Normal;
+            effect1.addEventListener('input', slide);
+            function slide() {
+                e1Value = effect1.valueAsNumber; e1Normal = e1Value / effect1.max;
+                mat.uniforms.uE1.value.x = e1Value; mat.uniforms.uE1.value.y = e1Normal;
+            }
         });
     });
 }
@@ -125,4 +138,25 @@ function draw() {
 //################################################## // EFFECTS
 async function postPro() {
 
+}
+
+//################################################## // MENU
+const btn = document.querySelector('#btn_hideMenu');
+btn.addEventListener('click', hideMenu);
+function hideMenu() {
+    const menu = document.querySelector('#menu'); menu.style.display = 'none';
+    const body = document.querySelector('body'); body.style.gridTemplateColumns = '1fr';
+    resize();
+}
+
+function showMenu() {
+    resize();
+}
+
+function resize() {
+    canvasWidth = canvasElem.offsetWidth; canvasHeight = canvasElem.offsetHeight;
+    camera.aspect = canvasWidth / canvasHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(canvasWidth, canvasHeight);
 }
