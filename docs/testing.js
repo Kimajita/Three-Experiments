@@ -1,13 +1,12 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'effectComposer';
-import { RenderPass } from 'renderPass';
-import { ShaderPass } from 'shaderPass';
+import { OrbitControls } from 'orbitControls';
 
 //################################################## // VARIABLES
-//let controls;
+let controls;
 let renderer, canvas, compose, pass, shader;
 let scene, camera, light, pointLight;
-let cameraDistance = 1.0; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
+let cameraDistance = 1.5; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
+const speed = 0.001;
 
 const width = window.innerWidth;
 const height = window.innerHeight;
@@ -28,8 +27,9 @@ function renderSetup() {
 
 function render() {
     requestAnimationFrame(render);
+    controls.update();
     renderer.setRenderTarget(null); renderer.clear();
-    renderer.render(canvas, camera);
+    renderer.render(scene, camera);
 }
 
 //################################################## // INIT
@@ -43,17 +43,13 @@ async function init() {
     camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     camera.position.z = cameraDistance;
 
-    //defaults
-    let left, right, top, bottom; left = -1; right = 1; top = 1; bottom = -1;
-    //left = width / -2; right = width / 2; top = height / 2; bottom = height / -2;
-    //camera = new THREE.OrthographicCamera(left, right, top, bottom, nearPlane, farPlane);
-    //camera.position.z = cameraDistance;
-
     light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
     scene.add(light);
 
     renderSetup();
     document.body.appendChild(renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
 
     await startStream();
     draw();
@@ -74,96 +70,59 @@ async function startStream() {
 
 //################################################## // SCENE
 function draw() {
-    const speed = 0.001;
-
-    const loader = new THREE.FileLoader();
-    loader.load('./vertexShader.glsl', (file) => {
-        const vertexShader = file;
-        loader.load('./fragmentShader.glsl', (file) => {
+    const importImg = new THREE.TextureLoader(); const importTxt = new THREE.FileLoader();
+    importImg.load('./assets/earth/earth_squared1.jpg', (file) => {
+        const image = file;
+        importTxt.load('./fragmentShader.glsl', (file) => {
             const fragmentShader = file;
 
-            //plane as big as window / canvas
-            const planeHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fieldOfView) / 2) * nearPlane;
-            const planeWidth = planeHeight * aspectRatio;
-
-            const geo = new THREE.PlaneGeometry(planeWidth, planeHeight);
+            const geo = new THREE.BoxGeometry(1, 1, 1);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
-                    uTime: { value: 0.0 }, uSine: { value: 0.0 },
+                    uTime: { value: 0.0 }, uSpeed: { value: speed },
+                    uColor: { value: new THREE.Color(0.5, 0.0, 0.75) },
                     uResolution: { value: new THREE.Vector2(width, height) },
-                    uAspect: { value: width / height },
+                    uTexture: { value: image },
+
+                    //User Input:
                     uMouse: { value: new THREE.Vector2() },
                     uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
                 },
-                vertexShader: vertexShader,
+                vertexShader: `
+                varying vec3 vNormal;
+                varying vec2 vUV;
+
+                void main() {
+
+                    vNormal = normal;
+                    vUV = uv;
+
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }`,
                 fragmentShader: fragmentShader,
-                side: THREE.DoubleSide
-            }, );
+                side: THREE.DoubleSide,
+            });
 
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.z = cameraDistance - nearPlane;
             scene.add(mesh);
 
+
+
+            //FUNCTIONS
             const timer = new THREE.Timer();
-            function updateTime(timeStamp) {
-                requestAnimationFrame(updateTime);
+            function update(timeStamp) {
+                requestAnimationFrame(update);
 
                 timer.update(timeStamp);
-                const elapsed = timer.getElapsed();
-                mat.uniforms.uTime.value = elapsed;
 
-                const t = (Math.sin(Date.now() * speed) + 1) / 2;
-                mat.uniforms.uSine.value = t;
+                mat.uniforms.uTime.value = timer.getElapsed();
 
-            } updateTime(0.0);
-
-            document.onmousemove = function (mouse) {
-                mat.uniforms.uMouse.value.x = mouse.pageX / width;
-                mat.uniforms.uMouse.value.y = mouse.pageY / height;
-            }
-
-            let averageFrequency, normalFrequency;
-            let max = 0.0; let current = 1.0;
-            function stream() {
-                requestAnimationFrame(stream);
-                averageFrequency = analyse.getAverageFrequency();
-                mat.uniforms.uFrequency.value = averageFrequency;
-
-                current = averageFrequency;
-                if (current > max) { max = current; console.log('abs max:\t' + max); }
-
-                normalFrequency = averageFrequency / max;
-                mat.uniforms.uNormalFrequency.value = normalFrequency;
-
-                renderer.setRenderTarget(writeBuffer); renderer.clear();
-                renderer.render(scene, camera);
-            } stream();
+            } update(0.0);
         });
     });
 }
 
+//################################################## // EFFECTS
 async function postPro() {
-    const loader = new THREE.FileLoader();
-    loader.load('./postVertex.glsl', (file) => {
-        const vertexShader = file;
-        loader.load('./postFragment.glsl', (file) => {
-            const fragmentShader = file;
 
-            const geo = new THREE.PlaneGeometry(1.5, 1.5);
-            shader = new THREE.ShaderMaterial({
-                uniforms: {
-                    uTime: { value: 0.0 }, uSine: { value: 0.0 },
-                    uResolution: { value: new THREE.Vector2(width, height) }, uAspect: { value: width / height },
-                    uMouse: { value: new THREE.Vector2() }, uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
-                    uTexture: { value: writeBuffer.texture }
-                },
-                vertexShader: vertexShader,
-                fragmentShader: fragmentShader
-            });
-            const mesh = new THREE.Mesh(geo, shader);
-            canvas.add(mesh);
-
-            console.log(shader.uniforms.uTexture.value);
-        });
-    });
 }
