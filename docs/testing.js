@@ -93,7 +93,10 @@ function draw() {
                     uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
 
                     //Effect Slider:
-                    uE1: { value: new THREE.Vector2() },
+                    eWhite: { value: new THREE.Vector2() },
+                    eGrey: { value: new THREE.Vector2() },
+                    eGrain: { value: new THREE.Vector2() },
+
                 },
                 vertexShader: `
                 varying vec3 vNormal;
@@ -124,12 +127,22 @@ function draw() {
 
             } update(0.0);
 
-            const effect1 = document.querySelector('#effect1');
-            let e1Value, e1Normal;
-            effect1.addEventListener('input', slide);
-            function slide() {
-                e1Value = effect1.valueAsNumber; e1Normal = e1Value / effect1.max;
-                mat.uniforms.uE1.value.x = e1Value; mat.uniforms.uE1.value.y = e1Normal;
+            const eff_White = document.querySelector('#effect_white'); eff_White.addEventListener('input', slide);
+            const eff_Grey = document.querySelector('#effect_grey'); eff_Grey.addEventListener('input', slide);
+            const eff_Grain = document.querySelector('#effect_grain'); eff_Grain.addEventListener('input', slide);
+            function slide(event) {
+
+                let effect = event.target;
+                let value = effect.valueAsNumber;
+                let normal = effect.valueAsNumber / effect.max;
+
+                if (effect.name == "white") {
+                    mat.uniforms.eWhite.value = new THREE.Vector2(value, normal);
+                } else if (effect.name == "grey") {
+                    mat.uniforms.eGrey.value = new THREE.Vector2(value, normal);
+                } else if (effect.name == "grain") {
+                    mat.uniforms.eGrain.value = new THREE.Vector2(value, normal);
+                }
             }
         });
     });

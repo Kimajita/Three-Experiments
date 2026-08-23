@@ -36,6 +36,7 @@
             #canvas {
                 background: red;
             }
+            label::before { content: "\a"; white-space: pre; }
 
         </style>
 
@@ -55,10 +56,17 @@
         <script type="module" src="./testing.js" async></script>
         <div class="hide" id="menu">
             here will be a menu to pick from different input images apply effects to it
+            (so far so ugly)
 
             <div id="effects">
-                <label for="effectName">effect</label>
-                <input type="range" id="effect1" name="effectName" min="0" max="100" step="1"/>
+                <label for="white">White</label>
+                <input type="range" id="effect_white" name="white" min="0" max="100" step="1" value="0" />
+
+                <label for="grey">Grey</label>
+                <input type="range" id="effect_grey" name="grey" min="0" max="100" step="1" value="0" />
+
+                <label for="grain">Grain</label>
+                <input type="range" id="effect_grain" name="grain" min="0" max="100" step="1" value="0" />
             </div>
 
             <div id="buttons">

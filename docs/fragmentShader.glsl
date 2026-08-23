@@ -5,6 +5,9 @@ uniform float uTime; uniform float uSpeed;
 uniform vec2 uResolution; uniform vec2 uMouse;
 uniform float uFrequency; uniform float uNormalFrequency;
 
+//effects
+uniform vec2 eWhite; uniform vec2 eGrey; uniform vec2 eGrain;
+
 varying vec3 vNormal;
 varying vec2 vUV;
 
@@ -16,8 +19,17 @@ float threshold(float color, float white, float grey) {
             else { return 0.0; }
 }
 
-float grain(vec2 uv) {
-    return fract(sin(dot(uv, vec2(12.9898, 78.23))) * 43758.5453);
+float grain(vec2 uv) { return fract(sin(dot(uv, vec2(12.9898, 78.23))) * 43758.5453); }
+
+float dither(vec2 uv, float luma, int[4] matrix) {
+    float amount = 2.0;
+    int x = int(mod(uv.x, amount));
+    int y = int(mod(uv.y, amount));
+
+    int index = x + y * int(amount);
+    float limit = (float(matrix[index]) + 1.0) / (1.0 + 4.0);
+
+    return luma < limit ? 0.0 : 1.0;
 }
 
 void main() {
@@ -28,17 +40,21 @@ void main() {
     vec3 finalColor = finalTexture.rgb;
 
     //greyscale
-    vec4 lum = vec4(0.215, 0.715, 0.075, 0.0);
-    float greyscale = dot(finalTexture, lum);
+    vec4 luma = vec4(0.215, 0.715, 0.075, 0.0);
+    float greyscale = dot(finalTexture, luma);
 
     //threshold
-    //float maxWhite = abs(sin(uTime)) / 2.0 + 0.2; float maxGrey = abs(sin(uTime)) / 2.0 + 0.015;
-    float maxWhite = 0.5; float maxGrey = 0.35;
+    //float maxWhite = 0.5; float maxGrey = 0.35;
+    float maxWhite = eWhite.y; float maxGrey = eGrey.y;
 
     //grain
-    float grainFactor = 1.2;
-    greyscale = greyscale + ((grain(uv) / 9.0) * grainFactor);
+    float grainFactor = eGrain.y * 2.0; //range from 0 to 2
+    greyscale = greyscale + ((grain(uv) /9.0) * grainFactor);
     finalColor = vec3(threshold(greyscale, maxWhite, maxGrey));
+
+    //dither
+    int ditherMatrix[4] = int[](0, 3, 2, 1);
+    finalColor = vec3(dither(vUV, finalColor.r, ditherMatrix), dither(vUV, finalColor.g, ditherMatrix), dither(vUV, finalColor.b, ditherMatrix));
 
     gl_FragColor = vec4(finalColor, 1.0);
 }
