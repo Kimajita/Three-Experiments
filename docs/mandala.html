@@ -36,6 +36,7 @@
         let renderer, canvas, compose, pass, shader;
         let scene, camera, light, pointLight;
         let cameraDistance = 1.0; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
+        const speed = 0.001;
 
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -96,72 +97,129 @@
 
         //################################################## // SCENE
         function draw() {
-            const speed = 0.001;
+            //plane as big as window / canvas
+            const planeHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fieldOfView) / 2) * nearPlane;
+            const planeWidth = planeHeight * aspectRatio;
 
-            const loader = new THREE.FileLoader();
-            loader.load('./vertexShader.glsl', (file) => {
-                const vertexShader = file;
-                loader.load('./fragmentShader.glsl', (file) => {
-                    const fragmentShader = file;
+            const geo = new THREE.PlaneGeometry(planeWidth, planeHeight);
+            const mat = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0.0 }, uSine: { value: 0.0 },
+                    uResolution: { value: new THREE.Vector2(width, height) },
+                    uAspect: { value: width / height },
+                    uMouse: { value: new THREE.Vector2() },
+                    uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                },
+                vertexShader: `
+                varying vec3 vPosition;
+                varying vec3 vNormal;
+                varying vec2 vUV;
 
-                    //plane as big as window / canvas
-                    const planeHeight = 2 * Math.tan(THREE.MathUtils.degToRad(fieldOfView) / 2) * nearPlane;
-                    const planeWidth = planeHeight * aspectRatio;
+                void main() {
 
-                    const geo = new THREE.PlaneGeometry(planeWidth, planeHeight);
-                    const mat = new THREE.ShaderMaterial({
-                        uniforms: {
-                            uTime: { value: 0.0 }, uSine: { value: 0.0 },
-                            uResolution: { value: new THREE.Vector2(width, height) },
-                            uAspect: { value: width / height },
-                            uMouse: { value: new THREE.Vector2() },
-                            uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
-                        },
-                        vertexShader: vertexShader,
-                        fragmentShader: fragmentShader,
-                        side: THREE.DoubleSide
-                    }, );
+                    vPosition = position;
+                    vNormal = normal;
+                    vUV = uv;
 
-                    const mesh = new THREE.Mesh(geo, mat);
-                    mesh.position.z = cameraDistance - nearPlane;
-                    scene.add(mesh);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                } `,
+                fragmentShader: `
+                //graphtoy.com
+                uniform vec2 uMouse;
+                uniform float uTime; uniform float uSine;
+                uniform vec2 uResolution; uniform float uAspect;
+                uniform float uFrequency; uniform float uNormalFrequency;
 
-                    const timer = new THREE.Timer();
-                    function updateTime(timeStamp) {
-                        requestAnimationFrame(updateTime);
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                varying vec2 vUV;
 
-                        timer.update(timeStamp);
-                        const elapsed = timer.getElapsed();
-                        mat.uniforms.uTime.value = elapsed;
+                const float pi = 3.1415926535;
 
-                        const t = (Math.sin(Date.now() * speed) + 1) / 2;
-                        mat.uniforms.uSine.value = t;
+                vec3 gradient(float t) {
 
-                    } updateTime(0.0);
+                    //https://dev.thi.ng/gradients/
+                    vec3 a = vec3(0.7, 0.1, 0.5);
+                    vec3 b = vec3(0.37, 0.05, 0.37);
+                    vec3 c = vec3(1.0, 2.0, 0.15);
+                    vec3 d = vec3(3.0, 0.35, 1.0);
 
-                    document.onmousemove = function (mouse) {
-                        mat.uniforms.uMouse.value.x = mouse.pageX / width;
-                        mat.uniforms.uMouse.value.y = mouse.pageY / height;
+                    return a + b * cos(6.28318 * (c * t + d));
+                }
+
+                void main() {
+                    vec2 uv = vUV * 2.0 - 1.0; vec2 uv0 = uv;
+                    vec3 finalColor = vec3(0.0, 0.0, 0.0);
+
+                    uv += uTime * 0.01;
+                    uv += uMouse;
+
+                    for (float i = 0.0; i < 3.0; i++) {
+                        uv = fract(uv * 1.5); //split
+                        uv -= 0.5; //center
+
+                        float d = length(uv) * exp(-length(uv0));
+                        //the distance of each point towards the center
+
+                        float offset = 0.5;
+                        vec3 color = gradient(length(uv0) + i * offset + uTime * offset);
+
+                        float freq = 9.0; float seed = uTime * offset;
+                        d = sin(d * freq + seed)/freq; //radial animation
+                        d = abs(d); //an absolute value from 0 to one - takes out filling
+                        //d = smoothstep(0.0, 0.1, d); //threshold with fading
+
+                        float inverse = 0.0125;
+                        d = pow(inverse / d, 1.25); //inverted glow rings
+
+                        finalColor += color * d; //multiply color with circles
+                        finalColor.x = finalColor.x * uNormalFrequency * 0.75;
+                        finalColor.y = finalColor.y * uNormalFrequency * 0.5;
                     }
 
-                    let averageFrequency, normalFrequency;
-                    let max = 0.0; let current = 1.0;
-                    function stream() {
-                        requestAnimationFrame(stream);
-                        averageFrequency = analyse.getAverageFrequency();
-                        mat.uniforms.uFrequency.value = averageFrequency;
+                    gl_FragColor = vec4(finalColor, 1.0);
+                } `,
+                side: THREE.DoubleSide
+            }, );
 
-                        current = averageFrequency;
-                        if (current > max) { max = current; console.log('abs max:\t' + max); }
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.z = cameraDistance - nearPlane;
+            scene.add(mesh);
 
-                        normalFrequency = averageFrequency / max;
-                        mat.uniforms.uNormalFrequency.value = normalFrequency;
+            const timer = new THREE.Timer();
+            function updateTime(timeStamp) {
+                requestAnimationFrame(updateTime);
 
-                        renderer.setRenderTarget(writeBuffer); renderer.clear();
-                        renderer.render(scene, camera);
-                    } stream();
-                });
-            });
+                timer.update(timeStamp);
+                const elapsed = timer.getElapsed();
+                mat.uniforms.uTime.value = elapsed;
+
+                const t = (Math.sin(Date.now() * speed) + 1) / 2;
+                mat.uniforms.uSine.value = t;
+
+            } updateTime(0.0);
+
+            document.onmousemove = function (mouse) {
+                mat.uniforms.uMouse.value.x = mouse.pageX / width;
+                mat.uniforms.uMouse.value.y = mouse.pageY / height;
+            }
+
+            let averageFrequency, normalFrequency;
+            let max = 0.0; let current = 1.0;
+            function stream() {
+                requestAnimationFrame(stream);
+                averageFrequency = analyse.getAverageFrequency();
+                mat.uniforms.uFrequency.value = averageFrequency;
+
+                current = averageFrequency;
+                if (current > max) { max = current; console.log('abs max:\t' + max); }
+
+                normalFrequency = averageFrequency / max;
+                mat.uniforms.uNormalFrequency.value = normalFrequency;
+
+                renderer.setRenderTarget(writeBuffer); renderer.clear();
+                renderer.render(scene, camera);
+            } stream();
         }
 
         async function postPro() {
