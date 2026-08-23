@@ -10,6 +10,9 @@ varying vec2 vUV;
 
 const float pi = 3.1415926535;
 
+float threshold(float color, float max) {
+    if (color > max) { return 1.0; } else { return 0.0; }
+}
 
 void main() {
     vec2 uv = vUV * 2.0 - 1.0; vec2 uv0 = uv;
@@ -22,5 +25,9 @@ void main() {
     vec4 lum = vec4(0.215, 0.715, 0.075, 0.0);
     float grayscale = dot(finalTexture, lum);
 
-    gl_FragColor = vec4(vec3(grayscale), 1.0);
+    //threshold
+    float maxValue = 0.5;
+    finalColor = vec3(threshold(grayscale, maxValue));
+
+    gl_FragColor = vec4(finalColor, 1.0);
 }
