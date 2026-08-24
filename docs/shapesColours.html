@@ -188,6 +188,30 @@
                     return st;
                 }
 
+                float beat(float range, float min) {
+                    float power = 2.0;
+                    if (uNormalFrequency < 0.9) {
+                        power = -2.0;
+                    }
+                    float beat = pow(uNormalFrequency, power) * range + min;
+                    return beat;
+                }
+
+                vec3 dance(vec3 color) {
+
+                    vec3 col2 = color + vec3(1.0);
+                    vec3 col1 = pow(color, vec3(-10.5)) + vec3(0.0);
+
+                    float factor = 2.0;
+                    vec3 final = vec3(
+                        smoothstep(col1.x, col2.x, uNormalFrequency * factor),
+                        smoothstep(col1.y, col2.y, uNormalFrequency * factor),
+                        smoothstep(col1.z, col2.z, uNormalFrequency * factor)
+                    );
+
+                    return final;
+                }
+
                 void main() {
 
                     //Basic Setup
