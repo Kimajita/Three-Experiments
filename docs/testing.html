@@ -14,29 +14,10 @@
             body {
                 width: 100vw; max-width: 100%;
                 height: 100vh;  max-height: 100%;
-
-                display: grid;
-                grid-template-columns: 1fr 3fr;
-                grid-template-rows: 1fr;
-            }
-            #menu {
-                background: mediumpurple;
-                padding: 1em;
-
-                display: grid;
-                grid-template-rows: 1fr 5fr 1fr;
-                gap: 1em;
-            }
-            #effects {
-                background: black;
-                color: white;
-            }
-            #buttons {
             }
             #canvas {
                 background: red;
             }
-            label::before { content: "\a"; white-space: pre; }
 
         </style>
 
@@ -53,27 +34,6 @@
         </script>
     </head>
     <body>
-        <div class="hide" id="menu">
-            here will be a menu to pick from different input images apply effects to it
-            (so far so ugly)
-
-            <div id="effects">
-                <label for="white">White</label>
-                <input type="range" id="effect_white" name="white" min="0" max="100" step="1" value="0" />
-
-                <label for="grey">Grey</label>
-                <input type="range" id="effect_grey" name="grey" min="0" max="100" step="1" value="0" />
-
-                <label for="grain">Grain</label>
-                <input type="range" id="effect_grain" name="grain" min="0" max="100" step="1" value="0" />
-            </div>
-
-            <div id="buttons">
-                <button id="btn_hideMenu">hide menu</button>
-                <button class="hide" id="btn_showMenu">show menu</button>
-            </div>
-
-        </div>
         <div id="canvas">
 
         </div>

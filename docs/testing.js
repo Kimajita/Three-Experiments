@@ -5,19 +5,27 @@ import { OrbitControls } from 'orbitControls';
 let controls;
 let renderer, canvas, compose, pass, shader;
 let scene, camera, light, pointLight;
-let cameraDistance = 1.5; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
-const speed = 0.001;
+let cameraDistance = 0.82; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
+const speed = 0.025;
 
+//################################################## // HTML
 const width = window.innerWidth; const height = window.innerHeight; const aspectRatio = width / height; const pixelRatio = window.devicePixelRatio;
 let canvasElem, canvasWidth, canvasHeight;
+function resize() {
+    canvasWidth = canvasElem.offsetWidth; canvasHeight = canvasElem.offsetHeight;
+    camera.aspect = canvasWidth / canvasHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(canvasWidth, canvasHeight);
+}
 
 //################################################## // RENDER
 let writeBuffer;
 function renderSetup() {
-    writeBuffer = new THREE.WebGLRenderTarget(canvasWidth, canvasHeight);
+    writeBuffer = new THREE.WebGLRenderTarget(width, height);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(pixelRatio);
-    renderer.setSize(canvasWidth, canvasHeight);
+    renderer.setSize(width, height);
 
     canvas = new THREE.Scene();
     canvas.background = new THREE.Color(0x111111);
@@ -42,9 +50,9 @@ async function init() {
 
     //############################################## // LIGHTS, CAMERA, ACTION!
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0x151515);
 
-    camera = new THREE.PerspectiveCamera(fieldOfView, canvasWidth / canvasHeight, nearPlane, farPlane);
+    camera = new THREE.PerspectiveCamera(fieldOfView, aspectRatio, nearPlane, farPlane);
     camera.position.z = cameraDistance;
 
     light = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
@@ -74,41 +82,24 @@ async function startStream() {
 
 //################################################## // SCENE
 function draw() {
-    const importImg = new THREE.TextureLoader(); const importTxt = new THREE.FileLoader();
-    importImg.load('./assets/earth/earth_squared1.jpg', (file) => {
-        const image = file;
-        importTxt.load('./fragmentShader.glsl', (file) => {
+    const loader = new THREE.FileLoader();
+    loader.load('./vertexShader.glsl', (file) => {
+        const vertexShader = file;
+        loader.load('./fragmentShader.glsl', (file) => {
             const fragmentShader = file;
 
-            const geo = new THREE.BoxGeometry(1, 1, 1);
+            const geo = new THREE.PlaneGeometry(1, 1);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
-                    uTime: { value: 0.0 }, uSpeed: { value: speed },
+                    uTime: { value: 0.0 }, uTimeLimit: { value: 0.0 },
                     uColor: { value: new THREE.Color(0.5, 0.0, 0.75) },
                     uResolution: { value: new THREE.Vector2(width, height) },
-                    uTexture: { value: image },
 
                     //User Input:
                     uMouse: { value: new THREE.Vector2() },
                     uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
-
-                    //Effect Slider:
-                    eWhite: { value: new THREE.Vector2() },
-                    eGrey: { value: new THREE.Vector2() },
-                    eGrain: { value: new THREE.Vector2() },
-
                 },
-                vertexShader: `
-                varying vec3 vNormal;
-                varying vec2 vUV;
-
-                void main() {
-
-                    vNormal = normal;
-                    vUV = uv;
-
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }`,
+                vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
                 side: THREE.DoubleSide,
             });
@@ -117,32 +108,35 @@ function draw() {
             scene.add(mesh);
 
             //FUNCTIONS
-            const timer = new THREE.Timer();
+            let time = 0.0; let timeLimit = 0.0;
+            let timer1 = new THREE.Timer(); let timer2 = new THREE.Timer();
+            let averageFrequency, normalFrequency; let max = 0.0; let current = 1.0;
             function update(timeStamp) {
                 requestAnimationFrame(update);
+                mat.uniforms.uTime.value = time;
+                //mat.uniforms.uTimeLimit.value = timeLimit;
 
-                timer.update(timeStamp);
+                timer1.update(timeStamp);
+                //timer2.update(timeStamp);
 
-                mat.uniforms.uTime.value = timer.getElapsed();
+                time = timer1.getElapsed();
+                //timeLimit = timer2.getElapsed();
+
+                //if (timeLimit > 42.0) { timer2 = new THREE.Timer(); }
+                //console.log(time + "\t\t\t" + timeLimit);
+
+                //AUDIO
+                averageFrequency = analyse.getAverageFrequency(); mat.uniforms.uFrequency.value = averageFrequency;
+                normalFrequency = averageFrequency / max; mat.uniforms.uNormalFrequency.value = normalFrequency;
+
+                current = averageFrequency;
+                if (current > max) { max = current; console.log('abs max:\t' + max); }
 
             } update(0.0);
 
-            const eff_White = document.querySelector('#effect_white'); eff_White.addEventListener('input', slide);
-            const eff_Grey = document.querySelector('#effect_grey'); eff_Grey.addEventListener('input', slide);
-            const eff_Grain = document.querySelector('#effect_grain'); eff_Grain.addEventListener('input', slide);
-            function slide(event) {
-
-                let effect = event.target;
-                let value = effect.valueAsNumber;
-                let normal = effect.valueAsNumber / effect.max;
-
-                if (effect.name == "white") {
-                    mat.uniforms.eWhite.value = new THREE.Vector2(value, normal);
-                } else if (effect.name == "grey") {
-                    mat.uniforms.eGrey.value = new THREE.Vector2(value, normal);
-                } else if (effect.name == "grain") {
-                    mat.uniforms.eGrain.value = new THREE.Vector2(value, normal);
-                }
+            document.onmousemove = function (mouse) {
+                mat.uniforms.uMouse.value.x = mouse.pageX / width;
+                mat.uniforms.uMouse.value.y = mouse.pageY / height;
             }
         });
     });
@@ -151,25 +145,4 @@ function draw() {
 //################################################## // EFFECTS
 async function postPro() {
 
-}
-
-//################################################## // MENU
-const btn = document.querySelector('#btn_hideMenu');
-btn.addEventListener('click', hideMenu);
-function hideMenu() {
-    const menu = document.querySelector('#menu'); menu.style.display = 'none';
-    const body = document.querySelector('body'); body.style.gridTemplateColumns = '1fr';
-    resize();
-}
-
-function showMenu() {
-    resize();
-}
-
-function resize() {
-    canvasWidth = canvasElem.offsetWidth; canvasHeight = canvasElem.offsetHeight;
-    camera.aspect = canvasWidth / canvasHeight;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(canvasWidth, canvasHeight);
 }
