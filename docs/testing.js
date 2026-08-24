@@ -33,7 +33,7 @@ function renderSetup() {
 
 function render() {
     requestAnimationFrame(render);
-    controls.update();
+    //controls.update();
     renderer.setRenderTarget(null); renderer.clear();
     renderer.render(scene, camera);
 }
@@ -60,8 +60,8 @@ async function init() {
 
     renderSetup();
     canvasElem.appendChild(renderer.domElement);
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
+    //controls = new OrbitControls(camera, renderer.domElement);
+    //controls.enableDamping = true;
 
     await startStream();
     draw();
