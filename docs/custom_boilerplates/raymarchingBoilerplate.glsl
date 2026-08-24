@@ -10,13 +10,6 @@ varying vec2 vUV;
 
 const float pi = 3.1415926535;
 
-float map(vec3 p) {
-    float radius = 1.0;
-    float sphere = sdfSphere(p, radius);
-
-    return sphere;
-}
-
 void main() {
 
     //SETUP
