@@ -3,7 +3,9 @@ These are just for copy and pasting
                                                     ROTATING TILES
 ###################################################################
 vec2 rotate2D(vec2 st, float rot) {
-    st -= 0.5; st = mat2(cos(rot), -sin(rot), sin(rot), cos(rot)) * st; st += 0.5;
+    st -= 0.5;
+    st = mat2(cos(rot), -sin(rot), sin(rot), cos(rot)) * st;
+    st += 0.5;
     return st;
 }
 
@@ -21,4 +23,36 @@ vec2 rotateTiles(vec2 st) {
 
     return st;
 }
+                                                    ROTATING MATRIX
 ###################################################################
+mat2 rotate2D(float angle) {
+    return mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+}
+
+mat3 rotate3D(vec3 axis, float angle) {
+    axis = normalize(axis);
+    float s = sin(angle); float c = cos(angle); float oc = 1.0 - c;
+    return mat3(
+        oc * axis.x * axis.x + c,
+        oc * axis.x * axis.y - axis.z * s,
+        oc * axis.z * axis.x + axis.y * s,
+        oc * axis.x * axis.y + axis.z * s,
+        oc * axis.y * axis.y + c,
+        oc * axis.y * axis.z - axis.x * s,
+        oc * axis.z * axis.x - axis.y * s,
+        oc * axis.y * axis.z + axis.x * s,
+        oc * axis.z * axis.z + c
+    );
+}
+                                                        ROTATE VEC3
+###################################################################
+vec3 rotate3D(vec3 pos, vec3 axis, float angle) {
+    return mix(dot(axis, pos) * axis, pos, cos(angle)) + cross(axis, pos) * sin(angle);
+}
+                                                    COSINE GRADIENTS
+###################################################################
+const float pi = 3.1415926535;
+vec3 gradient(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
+    //https://github.com/thi-ng/color/blob/master/src/gradients.org
+    return a + b * cos(pi * 2.0 * (c * t + d));
+}
