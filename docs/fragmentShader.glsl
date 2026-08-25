@@ -1,8 +1,7 @@
 
-uniform vec3 uColor;
-uniform float uTime; uniform float uTimeLimit;
+uniform float uTime;
 uniform vec2 uResolution; uniform vec2 uMouse;
-uniform float uFrequency; uniform float uNormalFrequency;
+uniform float uFrequency; uniform float uNormalFrequency; uniform float uLagFrequency;
 
 varying vec3 vNormal;
 varying vec3 vPosition;
@@ -95,28 +94,30 @@ void main() {
 
     vec2 st = uv;               //input copy
 
-    st *= 3.0;                //scale coordinations
+    st *= 2.0;                  //scale coordinations
     vec2 ipos = floor(st);      //integer coordinations
     vec2 fpos = fract(st);      //fractional coordinations
 
+    float beat = uLagFrequency * 0.2 + 0.5;
+    float anim = uTime * 0.42;
+
     vec2 q = vec2(0.0);
-    q.x = fbm(st + 0.0 * uTime);
-    q.y = fbm(st + vec2(1.0));
+    q.x = fbm(st + 0.15 * uTime);
+    q.y = fbm(st + vec2(10.0));
 
     vec2 r = vec2(0.0);
     float x1 = 1.7; float y1 = 9.2; float x2 = 8.2; float y2 = 2.8;
-    float anim = uTime * 0.5;
     x1 += anim; x2 += anim; y1 += anim; y2 += anim;
 
-    r.x = fbm(st + 7.0 * q + vec2(x1, y1));// + 0.125 * uTime);
-    r.y = fbm(st + 50.0 * q + vec2(x2, y2));// + 0.25 * uTime);
+    float speed = uTime * 0.5; //this would be a fantastic opportunity for using bpm detection
+    r.x = fbm(st + 7.0 * q + vec2(x1, y1) + speed + sin(beat));
+    r.y = fbm(st + 50.0 * q + vec2(x2, y2) + speed - sin(beat));
 
     float f = fbm(st + r);
-    float beat = uNormalFrequency * 0.25 + 0.5;
 
     vec3 col1 = rgb(242, 161, 182); vec3 col2 = rgb(42, 42, 125);
     vec3 col3 = rgb(95, 0, 195); vec3 col4 = rgb(25, 0, 42);
-    col1 *= beat; col2 /= beat; col3 += beat; col4 -= beat;
+    col1 += beat; col2 += beat; col3 *= beat; col4 *= beat;
 
     vec3 color = mix(col1, col2, clamp((f*f)*4.0,0.0,1.0));
     color = mix(color, col3, clamp(length(q),0.0,1.0));

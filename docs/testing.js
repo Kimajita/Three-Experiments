@@ -64,7 +64,6 @@ async function init() {
 
     await startStream();
     draw();
-    postPro();
     render();
 }
 
@@ -91,13 +90,12 @@ function draw() {
             const geo = new THREE.PlaneGeometry(1, 1);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
-                    uTime: { value: 0.1 }, uTimeLimit: { value: 0.1 },
-                    uColor: { value: new THREE.Color(0.5, 0.0, 0.75) },
+                    uTime: { value: 0.1 },
                     uResolution: { value: new THREE.Vector2(width, height) },
 
                     //User Input:
                     uMouse: { value: new THREE.Vector2() },
-                    uFrequency: { value: 0.1 }, uNormalFrequency: { value: 0.1 },
+                    uFrequency: { value: 0.1 }, uNormalFrequency: { value: 0.1 }, uLagFrequency: { value: 0.1 },
                 },
                 vertexShader: vertexShader,
                 fragmentShader: fragmentShader,
@@ -110,26 +108,24 @@ function draw() {
             //FUNCTIONS
             let time = 0.0; let timeLimit = 0.0;
             let timer1 = new THREE.Timer(); let timer2 = new THREE.Timer();
-            let averageFrequency, normalFrequency; let max = 0.0; let current = 1.0;
+            let averageFrequency, normalFrequency, lagFrequency; let max = 0.0; let current = 1.0; let last = current;
             function update(timeStamp) {
                 requestAnimationFrame(update);
                 mat.uniforms.uTime.value = time;
-                //mat.uniforms.uTimeLimit.value = timeLimit;
 
                 timer1.update(timeStamp);
-                //timer2.update(timeStamp);
-
                 time = timer1.getElapsed();
-                //timeLimit = timer2.getElapsed();
-
-                //if (timeLimit > 42.0) { timer2 = new THREE.Timer(); }
-                //console.log(time + "\t\t\t" + timeLimit);
 
                 //AUDIO
                 averageFrequency = analyse.getAverageFrequency(); mat.uniforms.uFrequency.value = averageFrequency;
                 normalFrequency = averageFrequency / max; mat.uniforms.uNormalFrequency.value = normalFrequency;
+                lagFrequency = normalFrequency; mat.uniforms.uLagFrequency.value = lagFrequency;
 
+                //LAG
                 current = averageFrequency;
+
+
+
                 if (current > max) { max = current; console.log('abs max:\t' + max); }
 
             } update(0.0);
@@ -140,9 +136,4 @@ function draw() {
             }
         });
     });
-}
-
-//################################################## // EFFECTS
-async function postPro() {
-
 }
