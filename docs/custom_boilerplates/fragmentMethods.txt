@@ -1,6 +1,26 @@
 These are just for copy and pasting
 
-                                                    ROTATING TILES
+                                       3D SIGNED DISTANCE FUNCTIONS
+###################################################################
+float sdSphere(vec3 pos, float radius) { return length(pos) - radius; }
+
+float sdBox(vec3 pos, vec3 size) {
+    vec3 q = abs(pos) - size;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+float sdOctahedron(vec3 pos, float size) {
+    pos = abs(pos);
+    return (pos.x + pos.y + pos.z - size) * 0.57735027;
+}
+
+float smoothMin(float shape1, float shape2, float n) {
+    float h = max(n - abs(shape1 - shape2), 0.0) / n;
+    float min = min(shape1, shape2) - pow(h, 3.0) * n * (1.0 / 6.0);
+    return min;
+}
+
+                                                     ROTATING TILES
 ###################################################################
 vec2 rotate2D(vec2 st, float rot) {
     st -= 0.5;
@@ -49,7 +69,7 @@ mat3 rotate3D(vec3 axis, float angle) {
 vec3 rotate3D(vec3 pos, vec3 axis, float angle) {
     return mix(dot(axis, pos) * axis, pos, cos(angle)) + cross(axis, pos) * sin(angle);
 }
-                                                    COSINE GRADIENTS
+                                                   COSINE GRADIENTS
 ###################################################################
 const float pi = 3.1415926535;
 vec3 gradient(float t, vec3 a, vec3 b, vec3 c, vec3 d) {

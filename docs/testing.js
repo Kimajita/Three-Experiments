@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-//import { OrbitControls } from 'orbitControls';
+import { OrbitControls } from 'orbitControls';
 
 //################################################## // VARIABLES
+let controls;
 let renderer, canvas, compose, pass, shader;
 let scene, camera, light, pointLight;
 let cameraDistance = 0.82; let fieldOfView = 75; let nearPlane = 0.1; let farPlane = 1000;
@@ -31,6 +32,8 @@ function renderSetup() {
 
 function render() {
     requestAnimationFrame(render);
+    controls.update();
+
     renderer.setRenderTarget(null); renderer.clear();
     renderer.render(scene, camera);
 }
@@ -57,6 +60,7 @@ async function init() {
 
     renderSetup();
     canvasElem.appendChild(renderer.domElement);
+    controls = new OrbitControls(camera, renderer.domElement);
 
     await startStream();
     draw();
