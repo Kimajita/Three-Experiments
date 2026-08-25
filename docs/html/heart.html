@@ -67,7 +67,7 @@
             //############################################## // LIGHTS, CAMERA, ACTION!
             scene = new THREE.Scene();
 
-            const envMap1 = await exrLoader.loadAsync('./assets/envMap2.exr');
+            const envMap1 = await exrLoader.loadAsync('../assets/envMap2.exr');
             envMap1.mapping = THREE.EquirectangularReflectionMapping;
             scene.environment = envMap1;
 
@@ -106,7 +106,7 @@
         function draw() {
 
             //############################################## // HEART
-            objLoader.load('./assets/small_heart.json', (heart) => {
+            objLoader.load('../assets/small_heart.json', (heart) => {
                 heart.scale.set(0.082, 0.082, 0.082);
                 heart.position.y = -0.5;
 
@@ -152,25 +152,6 @@
             });
             let knot = new THREE.Mesh(knot_geo, knot_mat);
             scene.add(knot);
-
-            //############################################## // Shader
-            fileLoader.load('./vertexShader.glsl', (data) => {
-                const vertexShader = data;
-                fileLoader.load('./fragmentShader.glsl', (data => {
-                    const fragmentShader = data;
-                    const shaderMaterial = new THREE.ShaderMaterial({
-                        uniforms: {
-                            u_Time: { type: 'f', value: 1.0 },
-                            u_Resolution: { value: new THREE.Vector2(width, height) },
-                        },
-                        defines: { USE_UV: true, USE_MAP: true, },
-                        vertexShader: vertexShader,
-                        fragmentShader: fragmentShader,
-
-                        //wireframe: true,
-                    });
-                }));
-            });
 
             const speed = 0.00025;
             function step() {

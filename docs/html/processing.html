@@ -156,30 +156,28 @@
         //################################################## // SCENE
         function draw() {
             const importImg = new THREE.TextureLoader(); const importTxt = new THREE.FileLoader();
-            importImg.load('./assets/earth/earth_squared1.jpg', (file) => {
+            importImg.load('../assets/earth/earth_squared1.jpg', (file) => {
                 const image = file;
-                importTxt.load('./fragmentShader.glsl', (file) => {
-                    const fragmentShader = file;
 
-                    const geo = new THREE.BoxGeometry(1, 1, 1);
-                    const mat = new THREE.ShaderMaterial({
-                        uniforms: {
-                            uTime: { value: 0.0 }, uSpeed: { value: speed },
-                            uColor: { value: new THREE.Color(0.5, 0.0, 0.75) },
-                            uResolution: { value: new THREE.Vector2(width, height) },
-                            uTexture: { value: image },
+                const geo = new THREE.BoxGeometry(1, 1, 1);
+                const mat = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uTime: { value: 0.0 }, uSpeed: { value: speed },
+                        uColor: { value: new THREE.Color(0.5, 0.0, 0.75) },
+                        uResolution: { value: new THREE.Vector2(width, height) },
+                        uTexture: { value: image },
 
-                            //User Input:
-                            uMouse: { value: new THREE.Vector2() },
-                            uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
+                        //User Input:
+                        uMouse: { value: new THREE.Vector2() },
+                        uFrequency: { value: 0.0 }, uNormalFrequency: { value: 0.0 },
 
-                            //Effect Slider:
-                            eWhite: { value: new THREE.Vector2() },
-                            eGrey: { value: new THREE.Vector2() },
-                            eGrain: { value: new THREE.Vector2() },
+                        //Effect Slider:
+                        eWhite: { value: new THREE.Vector2() },
+                        eGrey: { value: new THREE.Vector2() },
+                        eGrain: { value: new THREE.Vector2() },
 
-                        },
-                        vertexShader: `
+                    },
+                    vertexShader: `
                         varying vec3 vNormal;
                         varying vec2 vUV;
 
@@ -190,7 +188,7 @@
 
                             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
                         }`,
-                        fragmentShader: `
+                    fragmentShader: `
 
                         uniform vec3 uColor;
                         uniform sampler2D uTexture;
@@ -251,41 +249,40 @@
 
                             gl_FragColor = vec4(finalColor, 1.0);
                         } `,
-                        side: THREE.DoubleSide,
-                    });
-
-                    const mesh = new THREE.Mesh(geo, mat);
-                    scene.add(mesh);
-
-                    //FUNCTIONS
-                    const timer = new THREE.Timer();
-                    function update(timeStamp) {
-                        requestAnimationFrame(update);
-
-                        timer.update(timeStamp);
-
-                        mat.uniforms.uTime.value = timer.getElapsed();
-
-                    } update(0.0);
-
-                    const eff_White = document.querySelector('#effect_white'); eff_White.addEventListener('input', slide);
-                    const eff_Grey = document.querySelector('#effect_grey'); eff_Grey.addEventListener('input', slide);
-                    const eff_Grain = document.querySelector('#effect_grain'); eff_Grain.addEventListener('input', slide);
-                    function slide(event) {
-
-                        let effect = event.target;
-                        let value = effect.valueAsNumber;
-                        let normal = effect.valueAsNumber / effect.max;
-
-                        if (effect.name == "white") {
-                            mat.uniforms.eWhite.value = new THREE.Vector2(value, normal);
-                        } else if (effect.name == "grey") {
-                            mat.uniforms.eGrey.value = new THREE.Vector2(value, normal);
-                        } else if (effect.name == "grain") {
-                            mat.uniforms.eGrain.value = new THREE.Vector2(value, normal);
-                        }
-                    }
+                    side: THREE.DoubleSide,
                 });
+
+                const mesh = new THREE.Mesh(geo, mat);
+                scene.add(mesh);
+
+                //FUNCTIONS
+                const timer = new THREE.Timer();
+                function update(timeStamp) {
+                    requestAnimationFrame(update);
+
+                    timer.update(timeStamp);
+
+                    mat.uniforms.uTime.value = timer.getElapsed();
+
+                } update(0.0);
+
+                const eff_White = document.querySelector('#effect_white'); eff_White.addEventListener('input', slide);
+                const eff_Grey = document.querySelector('#effect_grey'); eff_Grey.addEventListener('input', slide);
+                const eff_Grain = document.querySelector('#effect_grain'); eff_Grain.addEventListener('input', slide);
+                function slide(event) {
+
+                    let effect = event.target;
+                    let value = effect.valueAsNumber;
+                    let normal = effect.valueAsNumber / effect.max;
+
+                    if (effect.name == "white") {
+                        mat.uniforms.eWhite.value = new THREE.Vector2(value, normal);
+                    } else if (effect.name == "grey") {
+                        mat.uniforms.eGrey.value = new THREE.Vector2(value, normal);
+                    } else if (effect.name == "grain") {
+                        mat.uniforms.eGrain.value = new THREE.Vector2(value, normal);
+                    }
+                }
             });
         }
 
