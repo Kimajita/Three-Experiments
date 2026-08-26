@@ -115,8 +115,8 @@ void main() {
 
     float f = fbm(st + r);
 
-    vec3 col1 = rgb(242, 161, 182); vec3 col2 = rgb(42, 42, 125);
-    vec3 col3 = rgb(95, 0, 195); vec3 col4 = rgb(25, 0, 42);
+    vec3 col1 = rgb(242, 161, 182); vec3 col2 = rgb(42, 42, 125); col1.r += abs(sin(uTime * 0.25)); col2.r += abs(cos(uTime * 0.5));
+    vec3 col3 = rgb(95, 0, 195); vec3 col4 = rgb(25, 0, 42); col3.b += abs(sin(uTime * 0.5)); col4.b += abs(cos(uTime * 0.25)); col3.g += sin(uTime * 0.75);
     col1 += beat; col2 += beat; col3 *= beat; col4 *= beat;
 
     vec3 color = mix(col1, col2, clamp((f*f)*4.0,0.0,1.0));

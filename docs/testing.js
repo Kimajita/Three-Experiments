@@ -87,7 +87,7 @@ function draw() {
         loader.load('./fragmentShader.glsl', (file) => {
             const fragmentShader = file;
 
-            const geo = new THREE.PlaneGeometry(1, 1);
+            const geo = new THREE.PlaneGeometry(1.5, 1);
             const mat = new THREE.ShaderMaterial({
                 uniforms: {
                     uTime: { value: 0.1 },
